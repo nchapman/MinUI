@@ -82,4 +82,31 @@ int GFX_wrapText(TTF_Font* font, char* str, int max_width, int max_lines);
  */
 void GFX_sizeText(TTF_Font* font, char* str, int leading, int* w, int* h);
 
+/**
+ * Calculates the total width needed for a button with hint text.
+ *
+ * Buttons have different layouts based on label length:
+ * - Single-character labels (A, B, X, Y): Full-size circular button
+ * - Multi-character labels (START, SELECT): Half-size + measured text width
+ * - Special case: Brightness button uses large font
+ *
+ * Example:
+ *   hint="CONFIRM", button="A" -> BUTTON_SIZE + hint_width + margins
+ *
+ * @param hint Hint text displayed next to button (e.g., "CONFIRM")
+ * @param button Button label (e.g., "A", "START")
+ * @param font_small Small font for measuring hint text
+ * @param font_tiny Tiny font for measuring multi-char button labels
+ * @param font_large Large font for special brightness button
+ * @param brightness_label Special brightness button label for comparison
+ * @param button_size Scaled button size constant
+ * @param button_margin Scaled button margin constant
+ * @return Total width in pixels
+ *
+ * @note Depends on SCALE1, BUTTON_SIZE, BUTTON_MARGIN macros
+ */
+int GFX_getButtonWidth(char* hint, char* button, TTF_Font* font_small, TTF_Font* font_tiny,
+                       TTF_Font* font_large, const char* brightness_label, int button_size,
+                       int button_margin);
+
 #endif // __GFX_TEXT_H__
