@@ -88,20 +88,6 @@ system:
 	cp ./workspace/all/clock/build/$(PLATFORM)/clock.elf ./build/EXTRAS/Tools/$(PLATFORM)/Clock.pak/
 	cp ./workspace/all/minput/build/$(PLATFORM)/minput.elf ./build/EXTRAS/Tools/$(PLATFORM)/Input.pak/
 
-	# copy boot assets (scale-appropriate versions)
-ifeq ($(PLATFORM), tg5040)
-	# tg5040 has both standard (2x) and brick (3x) variants
-	cp ./skeleton/SYSTEM/res/installing@2x.png ./build/BOOT/common/$(PLATFORM)/installing.png
-	cp ./skeleton/SYSTEM/res/updating@2x.png ./build/BOOT/common/$(PLATFORM)/updating.png
-	mkdir -p ./build/BOOT/common/$(PLATFORM)/brick
-	cp ./skeleton/SYSTEM/res/installing@3x.png ./build/BOOT/common/$(PLATFORM)/brick/installing.png
-	cp ./skeleton/SYSTEM/res/updating@3x.png ./build/BOOT/common/$(PLATFORM)/brick/updating.png
-else
-	$(eval SCALE := $(shell grep 'define FIXED_SCALE' workspace/$(PLATFORM)/platform/platform.h | awk '{print $$3}'))
-	cp ./skeleton/SYSTEM/res/installing@$(SCALE)x.png ./build/BOOT/common/$(PLATFORM)/installing.png
-	cp ./skeleton/SYSTEM/res/updating@$(SCALE)x.png ./build/BOOT/common/$(PLATFORM)/updating.png
-endif
-
 # Copy libretro cores to build directory
 # TODO: can't assume every platform will have the same stock cores (platform should be responsible for copy too)
 cores:
