@@ -92,7 +92,7 @@ TEST_INCLUDES = -I tests/support -I tests/support/unity -I workspace/all/common
 TEST_UNITY = tests/support/unity/unity.c
 
 # List of test executables
-TEST_EXECUTABLES = tests/utils_test tests/pad_test tests/collections_test tests/sdl_mocking_example
+TEST_EXECUTABLES = tests/utils_test tests/pad_test tests/collections_test tests/sdl_mocking_example tests/gfx_text_test
 
 # Default test target: use Docker
 test: docker-test
@@ -124,6 +124,11 @@ tests/collections_test: tests/unit/all/common/test_collections.c workspace/all/c
 # Build SDL mocking example (demonstrates fff framework usage)
 tests/sdl_mocking_example: tests/unit/all/common/test_sdl_mocking_example.c tests/support/sdl_fakes.c $(TEST_UNITY)
 	@echo "Building SDL mocking example..."
+	@$(CC) -o $@ $^ $(TEST_INCLUDES) -I tests/support/fff $(TEST_CFLAGS)
+
+# Build GFX text utility tests (uses fff for TTF mocking)
+tests/gfx_text_test: tests/unit/all/common/test_gfx_text.c workspace/all/common/gfx_text.c workspace/all/common/utils.c tests/support/sdl_fakes.c $(TEST_UNITY)
+	@echo "Building GFX text utility tests..."
 	@$(CC) -o $@ $^ $(TEST_INCLUDES) -I tests/support/fff $(TEST_CFLAGS)
 
 clean-tests:

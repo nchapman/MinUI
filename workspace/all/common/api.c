@@ -39,6 +39,7 @@
 
 #include "api.h"
 #include "defines.h"
+#include "gfx_text.h"
 #include "pad.h"
 #include "utils.h"
 
@@ -403,98 +404,9 @@ FALLBACK_IMPLEMENTATION void PLAT_setEffectColor(int next_color) {}
  * @param padding Additional padding to account for in width
  * @return Final width of the text in pixels (including padding)
  */
-int GFX_truncateText(TTF_Font* font, const char* in_name, char* out_name, int max_width,
-                     int padding) {
-	int text_width;
-	strcpy(out_name, in_name);
-	TTF_SizeUTF8(font, out_name, &text_width, NULL);
-	text_width += padding;
+// Note: GFX_truncateText() moved to workspace/all/common/gfx_text.c for testability
 
-	while (text_width > max_width) {
-		int len = strlen(out_name);
-		strcpy(&out_name[len - 4], "...\0");
-		TTF_SizeUTF8(font, out_name, &text_width, NULL);
-		text_width += padding;
-	}
-
-	return text_width;
-}
-
-/**
- * Wraps text to fit within a maximum width by inserting newlines.
- *
- * Breaks text at space characters to create wrapped lines. The last
- * line is truncated with "..." if it still exceeds max_width.
- * Modifies the input string in place by replacing spaces with newlines.
- *
- * @param font TTF font to measure text with
- * @param str String to wrap (modified in place)
- * @param max_width Maximum width per line in pixels
- * @param max_lines Maximum number of lines (0 for unlimited)
- * @return Width of the widest line in pixels
- *
- * @note Input string is modified - spaces become newlines at wrap points
- */
-int GFX_wrapText(TTF_Font* font, char* str, int max_width, int max_lines) {
-	if (!str)
-		return 0;
-
-	int line_width;
-	int max_line_width = 0;
-	char* line = str;
-	char buffer[MAX_PATH];
-
-	TTF_SizeUTF8(font, line, &line_width, NULL);
-	if (line_width <= max_width) {
-		line_width = GFX_truncateText(font, line, buffer, max_width, 0);
-		strcpy(line, buffer);
-		return line_width;
-	}
-
-	char* prev = NULL;
-	char* tmp = line;
-	int lines = 1;
-	while (!max_lines || lines < max_lines) {
-		tmp = strchr(tmp, ' ');
-		if (!tmp) {
-			if (prev) {
-				TTF_SizeUTF8(font, line, &line_width, NULL);
-				if (line_width >= max_width) {
-					if (line_width > max_line_width)
-						max_line_width = line_width;
-					prev[0] = '\n';
-					line = prev + 1;
-				}
-			}
-			break;
-		}
-		tmp[0] = '\0';
-
-		TTF_SizeUTF8(font, line, &line_width, NULL);
-
-		if (line_width >= max_width) { // wrap
-			if (line_width > max_line_width)
-				max_line_width = line_width;
-			tmp[0] = ' ';
-			tmp += 1;
-			prev[0] = '\n';
-			prev += 1;
-			line = prev;
-			lines += 1;
-		} else { // continue
-			tmp[0] = ' ';
-			prev = tmp;
-			tmp += 1;
-		}
-	}
-
-	line_width = GFX_truncateText(font, line, buffer, max_width, 0);
-	strcpy(line, buffer);
-
-	if (line_width > max_line_width)
-		max_line_width = line_width;
-	return max_line_width;
-}
+// Note: GFX_wrapText() moved to workspace/all/common/gfx_text.c for testability
 
 ///////////////////////////////
 // Graphics - Anti-aliased scaling (from picoarch)
@@ -1182,34 +1094,7 @@ int GFX_blitButtonGroup(char** pairs, int primary, SDL_Surface* dst, int align_r
  * @param w Output: width of widest line
  * @param h Output: total height (lines * leading)
  */
-void GFX_sizeText(TTF_Font* font, char* str, int leading, int* w, int* h) {
-	char* lines[MAX_TEXT_LINES];
-	int count = splitTextLines(str, lines, MAX_TEXT_LINES);
-	*h = count * leading;
-
-	int mw = 0;
-	char line[256];
-	for (int i = 0; i < count; i++) {
-		int len;
-		if (i + 1 < count) {
-			len = lines[i + 1] - lines[i] - 1;
-			if (len)
-				strncpy(line, lines[i], len);
-			line[len] = '\0';
-		} else {
-			len = strlen(lines[i]);
-			strcpy(line, lines[i]);
-		}
-
-		if (len) {
-			int lw;
-			TTF_SizeUTF8(font, line, &lw, NULL);
-			if (lw > mw)
-				mw = lw;
-		}
-	}
-	*w = mw;
-}
+// Note: GFX_sizeText() moved to workspace/all/common/gfx_text.c for testability
 
 /**
  * Renders multi-line text centered in a rectangular area.
