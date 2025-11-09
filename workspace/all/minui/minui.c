@@ -431,6 +431,8 @@ static void Directory_index(Directory* self) {
 				} else {
 					free(prior_str);
 					free(entry_str);
+					prior->unique = NULL;
+					entry->unique = NULL;
 				}
 			} else {
 				// Different filenames - show them
@@ -442,6 +444,8 @@ static void Directory_index(Directory* self) {
 				} else {
 					free(prior_str);
 					free(entry_str);
+					prior->unique = NULL;
+					entry->unique = NULL;
 				}
 			}
 		}

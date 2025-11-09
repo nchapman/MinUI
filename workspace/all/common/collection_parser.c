@@ -52,6 +52,10 @@ Collection_Entry** Collection_parse(char* collection_path, const char* sdcard_pa
 					continue; // Skip this entry if allocation fails
 
 				entry->path = strdup(sd_path);
+				if (!entry->path) {
+					free(entry);
+					continue; // Skip this entry if strdup fails
+				}
 				entry->is_pak = suffixMatch(".pak", sd_path);
 
 				entries[*entry_count] = entry;

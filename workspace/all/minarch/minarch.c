@@ -1360,8 +1360,13 @@ static void Config_init(void) {
 
 		// TODO: test this without a final line return
 		tmp2 = calloc(strlen(button_name) + 1, sizeof(char));
-		if (!tmp2)
+		if (!tmp2) {
+			for (int j = 0; j < i; j++) {
+				if (core_button_mapping[j].name)
+					free(core_button_mapping[j].name);
+			}
 			return;
+		}
 		strcpy(tmp2, button_name);
 		ButtonMapping* button = &core_button_mapping[i++];
 		button->name = tmp2;
