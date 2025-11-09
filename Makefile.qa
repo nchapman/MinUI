@@ -92,7 +92,7 @@ TEST_INCLUDES = -I tests/support -I tests/support/unity -I workspace/all/common
 TEST_UNITY = tests/support/unity/unity.c
 
 # List of test executables
-TEST_EXECUTABLES = tests/utils_test tests/pad_test tests/collections_test tests/gfx_text_test tests/audio_resampler_test tests/minarch_paths_test tests/minui_utils_test tests/m3u_parser_test tests/minui_file_utils_test tests/map_parser_test tests/collection_parser_test tests/recent_parser_test
+TEST_EXECUTABLES = tests/utils_test tests/pad_test tests/collections_test tests/gfx_text_test tests/audio_resampler_test tests/minarch_paths_test tests/minui_utils_test tests/m3u_parser_test tests/minui_file_utils_test tests/map_parser_test tests/collection_parser_test tests/recent_parser_test tests/recent_writer_test tests/directory_utils_test tests/binary_file_utils_test
 
 # Default test target: use Docker
 test: docker-test
@@ -165,6 +165,21 @@ tests/collection_parser_test: tests/unit/all/common/test_collection_parser.c wor
 tests/recent_parser_test: tests/unit/all/common/test_recent_parser.c workspace/all/common/recent_parser.c workspace/all/common/utils.c tests/support/fs_mocks.c $(TEST_UNITY)
 	@echo "Building recent.txt parser tests..."
 	@$(CC) -o $@ $^ $(TEST_INCLUDES) $(TEST_CFLAGS) -D_POSIX_C_SOURCE=200809L -Wl,--wrap=exists -Wl,--wrap=fopen -Wl,--wrap=fclose -Wl,--wrap=fgets
+
+# Build recent.txt writer tests (uses real temp files, no --wrap needed)
+tests/recent_writer_test: tests/unit/all/common/test_recent_writer.c workspace/all/common/recent_parser.c workspace/all/common/utils.c $(TEST_UNITY)
+	@echo "Building recent.txt writer tests..."
+	@$(CC) -o $@ $^ $(TEST_INCLUDES) $(TEST_CFLAGS) -D_POSIX_C_SOURCE=200809L
+
+# Build directory utility tests (uses real temp directories, no --wrap needed)
+tests/directory_utils_test: tests/unit/all/common/test_directory_utils.c workspace/all/common/directory_utils.c workspace/all/common/utils.c $(TEST_UNITY)
+	@echo "Building directory utility tests..."
+	@$(CC) -o $@ $^ $(TEST_INCLUDES) $(TEST_CFLAGS) -D_DEFAULT_SOURCE
+
+# Build binary file I/O tests (uses real temp files, no --wrap needed)
+tests/binary_file_utils_test: tests/unit/all/common/test_binary_file_utils.c workspace/all/common/binary_file_utils.c $(TEST_UNITY)
+	@echo "Building binary file I/O tests..."
+	@$(CC) -o $@ $^ $(TEST_INCLUDES) $(TEST_CFLAGS) -D_DEFAULT_SOURCE
 
 clean-tests:
 	rm -f $(TEST_EXECUTABLES) tests/*.o tests/**/*.o

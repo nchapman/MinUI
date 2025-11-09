@@ -70,6 +70,29 @@ Recent_Entry** Recent_parse(char* recent_path, const char* sdcard_path, int* ent
 }
 
 /**
+ * Saves recent entries to recent.txt file
+ */
+int Recent_save(char* recent_path, Recent_Entry** entries, int count) {
+	FILE* file = fopen(recent_path, "w");
+	if (!file) {
+		return 0;
+	}
+
+	for (int i = 0; i < count; i++) {
+		Recent_Entry* entry = entries[i];
+		fputs(entry->path, file);
+		if (entry->alias) {
+			fputs("\t", file);
+			fputs(entry->alias, file);
+		}
+		putc('\n', file);
+	}
+
+	fclose(file);
+	return 1;
+}
+
+/**
  * Frees entry array returned by Recent_parse()
  */
 void Recent_freeEntries(Recent_Entry** entries, int count) {

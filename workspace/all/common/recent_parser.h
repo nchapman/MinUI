@@ -43,6 +43,18 @@ typedef struct Recent_Entry {
 Recent_Entry** Recent_parse(char* recent_path, const char* sdcard_path, int* entry_count);
 
 /**
+ * Saves recent entries to recent.txt file
+ *
+ * Writes entries in tab-delimited format: path<TAB>alias (alias optional)
+ *
+ * @param recent_path Full path to recent.txt file
+ * @param entries Array of entry pointers to save
+ * @param count Number of entries in array
+ * @return 1 on success, 0 on failure (couldn't open file)
+ */
+int Recent_save(char* recent_path, Recent_Entry** entries, int count);
+
+/**
  * Frees entry array returned by Recent_parse()
  *
  * @param entries Array of entry pointers

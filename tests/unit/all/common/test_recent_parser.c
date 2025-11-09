@@ -12,6 +12,7 @@
  * - Order preservation
  *
  * Note: Uses GCC --wrap for file mocking (Docker-only)
+ * For write tests, see test_recent_writer.c (uses real temp files)
  */
 
 #include "../../../support/unity/unity.h"

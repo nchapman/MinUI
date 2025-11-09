@@ -111,9 +111,9 @@ int __wrap_exists(char* path) {
  * Wrapped fopen() - opens files from mock file system
  */
 FILE* __wrap_fopen(const char* pathname, const char* mode) {
-	// Only support read mode for now
+	// Only support read mode
 	if (mode[0] != 'r') {
-		return NULL; // Write mode not implemented yet
+		return NULL; // Write mode not supported (use real files in separate tests)
 	}
 
 	MockFile* file = find_file(pathname);

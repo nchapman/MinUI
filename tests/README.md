@@ -2,12 +2,12 @@
 
 This directory contains the test suite for MinUI, organized to mirror the source code structure.
 
-**Current Status: 318 tests, all passing** ✅
+**Current Status: 342 tests, all passing** ✅
 
 ## Quick Start
 
 ```bash
-make test   # Run all 318 tests in Docker (recommended)
+make test   # Run all 342 tests in Docker (recommended)
 ```
 
 Tests run in a Debian Buster ARM64 container that matches the platform toolchains exactly. This ensures consistency across development environments and catches platform-specific issues.
@@ -45,7 +45,10 @@ tests/
 │           ├── test_minui_file_utils.c   # File checking - 18 tests
 │           ├── test_map_parser.c         # map.txt aliasing - 22 tests
 │           ├── test_collection_parser.c  # Collection lists - 11 tests
-│           └── test_recent_parser.c      # Recent games - 13 tests
+│           ├── test_recent_parser.c      # Recent games parsing - 13 tests
+│           ├── test_recent_writer.c      # Recent games writing - 5 tests
+│           ├── test_directory_utils.c    # Directory operations - 7 tests
+│           └── test_binary_file_utils.c  # Binary file I/O - 12 tests
 ├── integration/                    # Integration tests (end-to-end tests)
 ├── fixtures/                       # Test data, sample ROMs, configs
 ├── support/                        # Test infrastructure
@@ -462,8 +465,9 @@ int mock_fs_exists(const char* path);               // Check if mock file exists
 ### Complete Examples
 
 **Real-world usage:**
-- `tests/unit/all/common/test_m3u_parser.c` - M3U playlist parsing
+- `tests/unit/all/common/test_m3u_parser.c` - M3U playlist parsing (read-only with mocking)
 - `tests/unit/all/common/test_minui_file_utils.c` - File existence checking
+- `tests/unit/all/common/test_recent_writer.c` - File writing with real temp files
 
 ### Compilation Requirements
 
@@ -494,25 +498,43 @@ tests/my_test: test_my_test.c my_code.c utils.c fs_mocks.c $(TEST_UNITY)
 ### Limitations
 
 **Current implementation:**
-- Read mode only (write mode not implemented)
-- No directory listing (opendir/readdir not mocked yet)
-- Files stored as strings in memory (max 8KB per file)
-- **Docker-only** - won't compile natively on macOS
+- **Read mode only** - Supports exists(), fopen("r"), fgets(), fclose()
+- Files stored as strings in memory (max 8KB per file, 100 files total)
+- **Docker-only** - Requires GCC --wrap (won't compile on macOS with clang/ld64)
+- Comprehensive test coverage for all text file parsers (map.txt, M3U, collections, recent.txt)
 
-### Adding More Wrapped Functions
+**Limitations and alternatives:**
+- **Write operations** (fputs, fprintf, fwrite) - Use real temp files instead
+- **Directory operations** (opendir, readdir) - Use real temp directories instead
+- **Binary I/O** (fread, fwrite with binary data) - Use real temp files instead
 
-To wrap additional functions:
+Using real temp files for these operations is more reliable, works cross-platform,
+and avoids the complexity of mocking glibc's internal FILE structure validation.
 
-1. Add wrapper in `tests/support/fs_mocks.c`:
+### Example: Testing with Temp Files
+
+For write operations or directory testing, use mktemp and cleanup:
+
 ```c
-FILE* __wrap_fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
-    // Your mock implementation
-}
-```
+void test_saveRecents(void) {
+    // Create temp file
+    char temp_path[] = "/tmp/recent_test_XXXXXX";
+    int fd = mkstemp(temp_path);
+    TEST_ASSERT_TRUE(fd >= 0);
+    close(fd);
 
-2. Add to compile flags in `Makefile.qa`:
-```makefile
--Wl,--wrap=fwrite
+    // Test the write operation
+    saveRecents(temp_path);
+
+    // Read back and verify
+    FILE* f = fopen(temp_path, "r");
+    TEST_ASSERT_NOT_NULL(f);
+    // ... verify content ...
+    fclose(f);
+
+    // Cleanup
+    unlink(temp_path);
+}
 ```
 
 ## Test Guidelines
@@ -560,7 +582,7 @@ void test_getEmuName_with_parens(void) {
 
 ## Test Summary
 
-**Total: 318 tests across 12 test suites**
+**Total: 342 tests across 15 test suites**
 
 ### Extracted Modules (Testable Logic)
 
@@ -579,19 +601,29 @@ These modules were extracted from large files (api.c, minui.c, minarch.c) to ena
 | minui_file_utils.c | 95 | 18 | minui.c | hasEmu, hasCue, hasM3u |
 | map_parser.c | 64 | 22 | minui.c/minarch.c | ROM display name aliasing (map.txt) |
 | collection_parser.c | 70 | 11 | minui.c | Custom ROM list parsing (.txt files) |
-| recent_parser.c | 77 | 13 | minui.c | Recently played games (recent.txt) |
-| **Total** | **1,902** | **318** | | |
+| recent_parser.c | 95 | 18 | minui.c | Recent games read/write (parse + save) |
+| directory_utils.c | 35 | 7 | minui.c | Directory content checking |
+| binary_file_utils.c | 42 | 12 | minarch.c | Binary file read/write (fread/fwrite) |
+| **Total** | **1,997** | **342** | | |
 
 ### Testing Technologies
 
 **Mocking Frameworks:**
 - **fff (Fake Function Framework)** - SDL function mocking (header-only)
-- **GCC --wrap** - File system function mocking (link-time substitution)
+- **GCC --wrap** - File system function mocking for reads (link-time substitution)
 
-**What We Can Mock:**
-- SDL functions (SDL_PollEvent, TTF_SizeUTF8, etc.)
-- Platform functions (PLAT_getBatteryStatus, PLAT_pollInput, etc.)
-- File I/O functions (exists, fopen, fgets, fclose)
+**Testing Approaches:**
+- **File mocking (--wrap)**: Read-only text file operations (exists, fopen("r"), fgets)
+- **Real temp files**: Write operations (mkstemp + fopen("w"), fputs, fwrite)
+- **Real temp directories**: Directory operations (mkdtemp + opendir, readdir)
+
+**What We Can Test:**
+- SDL functions (SDL_PollEvent, TTF_SizeUTF8, etc.) - fff mocks
+- Platform functions (PLAT_getBatteryStatus, PLAT_pollInput, etc.) - fff mocks
+- Text file parsing (map.txt, M3U, collections, recent.txt) - file mocking
+- File writing (Recent_save) - real temp files
+- Binary file I/O (fread/fwrite) - real temp files
+- Directory checking (hasNonHiddenFiles) - real temp directories
 
 ## Current Test Coverage
 
@@ -788,27 +820,62 @@ These modules were extracted from large files (api.c, minui.c, minarch.c) to ena
 
 **Note:** Extracted from `minui.c`'s getCollection(), uses file system mocking.
 
-### workspace/all/common/recent_parser.c - ✅ 13 tests
-**File:** `tests/unit/all/common/test_recent_parser.c`
+### workspace/all/common/recent_parser.c - ✅ 18 tests (13 read + 5 write)
+**Files:**
+- `tests/unit/all/common/test_recent_parser.c` (13 tests) - Recent_parse()
+- `tests/unit/all/common/test_recent_writer.c` (5 tests) - Recent_save()
 
-- Recent_parse() - Recently played games parsing
-- Tab-delimited format (path<TAB>alias, alias optional)
+**Read operations (uses file mocking):**
+- Recent_parse() - Tab-delimited format parsing
 - ROM validation (only includes existing files)
 - Order preservation (newest first)
 - Format handling (Windows newlines, special characters)
-- Integration tests (realistic recent.txt)
-- Error handling (file not found, empty files, all ROMs missing)
+- Error handling (file not found, empty files)
 
-**Coverage:** Complete coverage of recent.txt parsing logic.
+**Write operations (uses real temp files):**
+- Recent_save() - Writes entries to recent.txt
+- Single/multiple entries with/without aliases
+- Empty array handling
+- File creation error handling
 
-**Note:** Extracted from `minui.c`'s loadRecents(), uses file system mocking.
+**Coverage:** Complete coverage of recent.txt read/write operations.
+
+**Note:** Extracted from `minui.c` loadRecents()/saveRecents(). Uses hybrid approach: file mocking for reads, real temp files for writes.
+
+### workspace/all/common/directory_utils.c - ✅ 7 tests
+**File:** `tests/unit/all/common/test_directory_utils.c`
+
+- Directory_hasNonHiddenFiles() - Directory content checking
+- Empty directory detection
+- Hidden file filtering (.dotfiles)
+- Mixed content (hidden + visible files)
+- Subdirectory handling
+- Nonexistent directory error handling
+
+**Coverage:** Complete coverage of directory content checking logic.
+
+**Note:** Extracted from `minui.c` hasCollections()/hasRoms(). Uses real temp directories with mkdtemp().
+
+### workspace/all/common/binary_file_utils.c - ✅ 12 tests
+**File:** `tests/unit/all/common/test_binary_file_utils.c`
+
+- BinaryFile_read() - Binary file reading with fread()
+- BinaryFile_write() - Binary file writing with fwrite()
+- Small buffers (5 bytes)
+- Large buffers (1KB)
+- SRAM-like data (32KB, like Game Boy saves)
+- RTC-like data (8 bytes, like Game Boy RTC)
+- Error handling (null buffers, zero size, invalid paths)
+- Partial reads
+- File overwriting
+
+**Coverage:** Complete coverage of binary file I/O patterns used in minarch.c.
+
+**Note:** Extracted from `minarch.c` SRAM_read()/SRAM_write() patterns. Uses real temp files with mkstemp().
 
 ### Todo
 - [ ] Additional api.c GFX rendering functions (mostly SDL pixel operations)
 - [ ] Integration tests for minui.c/minarch.c workflows
-- [ ] Write-mode file mocking (fputs, fprintf) for saveRecents()
-- [ ] Directory mocking (opendir, readdir) for hasRecents(), hasCollections()
-- [ ] Binary file I/O mocking (fread, fwrite) for SRAM/state files
 
 ## Continuous Integration
 

@@ -6,7 +6,7 @@
  *
  * Uses GCC --wrap to intercept:
  * - exists() - MinUI's file existence check
- * - fopen/fclose - File handle operations
+ * - fopen/fclose - File handle operations (read mode only)
  * - fgets - Line-by-line reading
  *
  * Usage in tests:
@@ -19,6 +19,11 @@
  *
  * Compilation:
  *   gcc ... -Wl,--wrap=exists -Wl,--wrap=fopen -Wl,--wrap=fclose -Wl,--wrap=fgets
+ *
+ * Note on write/directory/binary operations:
+ *   For testing file writes (fputs, fprintf, fwrite), directory operations
+ *   (opendir, readdir), or binary I/O, use real temp files instead of mocking.
+ *   This is more reliable and works across all platforms.
  *
  * Note: Requires GCC/GNU ld (works in Docker, not on macOS with clang)
  */
