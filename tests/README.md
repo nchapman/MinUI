@@ -198,6 +198,174 @@ TEST_ASSERT_NULL(pointer)
 
 See `support/unity/unity.h` for full list.
 
+## SDL Function Mocking
+
+MinUI uses SDL extensively for graphics, input, and audio. Testing SDL-dependent code requires **mocking** SDL functions. We use the **Fake Function Framework (fff)** for this.
+
+### Infrastructure Overview
+
+```
+tests/support/
+├── fff/
+│   └── fff.h              # Fake Function Framework (MIT licensed)
+├── sdl_stubs.h            # Minimal SDL type definitions
+├── sdl_fakes.h            # fff-based SDL function fakes (declarations)
+├── sdl_fakes.c            # fff-based SDL function fakes (definitions)
+├── platform_mocks.h       # Mock PLAT_* interface
+└── platform_mocks.c       # Mock PLAT_* implementations
+```
+
+### What is fff?
+
+The **Fake Function Framework** is a header-only C mocking library that generates mockable versions of functions using macros. It provides:
+
+- **Call tracking** - Counts how many times a function was called
+- **Argument history** - Records arguments from the last 50 calls
+- **Return value control** - Set return values or sequences
+- **Custom implementations** - Provide custom fake behavior
+
+### Using fff for SDL Mocking
+
+#### Example: Mocking SDL_PollEvent
+
+```c
+#include "../../../support/unity/unity.h"
+#include "../../../support/fff/fff.h"
+#include "../../../support/sdl_stubs.h"
+#include "../../../support/sdl_fakes.h"
+
+DEFINE_FFF_GLOBALS;
+
+void setUp(void) {
+    // Reset fakes before each test
+    RESET_FAKE(SDL_PollEvent);
+    FFF_RESET_HISTORY();
+}
+
+void test_event_handling(void) {
+    // Configure mock to return "has event"
+    SDL_PollEvent_fake.return_val = 1;
+
+    SDL_Event event;
+    int result = SDL_PollEvent(&event);
+
+    // Verify behavior
+    TEST_ASSERT_EQUAL_INT(1, result);
+    TEST_ASSERT_EQUAL_INT(1, SDL_PollEvent_fake.call_count);
+}
+```
+
+#### Example: Custom Fake Implementation
+
+```c
+// Custom implementation that calculates text width
+int mock_TTF_SizeUTF8(TTF_Font* font, const char* text, int* w, int* h) {
+    if (w) *w = strlen(text) * 10;  // 10 pixels per character
+    if (h) *h = font->point_size;
+    return 0;
+}
+
+void test_text_width_calculation(void) {
+    // Use custom fake
+    TTF_SizeUTF8_fake.custom_fake = mock_TTF_SizeUTF8;
+
+    TTF_Font font = {.point_size = 16};
+    int width, height;
+
+    TTF_SizeUTF8(&font, "Hello", &width, &height);
+
+    TEST_ASSERT_EQUAL_INT(50, width);   // 5 chars * 10px
+    TEST_ASSERT_EQUAL_INT(16, height);  // Font size
+}
+```
+
+#### Example: Return Value Sequences
+
+```c
+void test_multiple_events(void) {
+    // Configure sequence: event, event, no more events
+    static int return_sequence[] = {1, 1, 0};
+    SET_RETURN_SEQ(SDL_PollEvent, return_sequence, 3);
+
+    SDL_Event event;
+    TEST_ASSERT_EQUAL_INT(1, SDL_PollEvent(&event));  // First event
+    TEST_ASSERT_EQUAL_INT(1, SDL_PollEvent(&event));  // Second event
+    TEST_ASSERT_EQUAL_INT(0, SDL_PollEvent(&event));  // No more
+}
+```
+
+### Available SDL Fakes
+
+**Currently defined:**
+- `SDL_PollEvent` - Event polling
+- `TTF_SizeUTF8` - Text size calculation
+
+**To add more fakes:**
+
+1. Add declaration in `tests/support/sdl_fakes.h`:
+```c
+DECLARE_FAKE_VALUE_FUNC(int, SDL_BlitSurface,
+                        SDL_Surface*, SDL_Rect*, SDL_Surface*, SDL_Rect*);
+```
+
+2. Add definition in `tests/support/sdl_fakes.c`:
+```c
+DEFINE_FAKE_VALUE_FUNC(int, SDL_BlitSurface,
+                       SDL_Surface*, SDL_Rect*, SDL_Surface*, SDL_Rect*);
+```
+
+3. Reset in your test's `setUp()`:
+```c
+RESET_FAKE(SDL_BlitSurface);
+```
+
+### Platform Mocks
+
+For mocking platform-specific `PLAT_*` functions, use `platform_mocks.c`:
+
+```c
+#include "../../../support/platform_mocks.h"
+
+void test_battery_status(void) {
+    // Configure mock battery state
+    mock_set_battery(75, 1);  // 75% charge, charging
+
+    // Call code that uses PLAT_getBatteryStatus()
+    update_battery_display();
+
+    // Verify behavior
+    // ...
+}
+```
+
+### Complete Example
+
+See `tests/unit/all/common/test_sdl_mocking_example.c` for a comprehensive demonstration of fff usage.
+
+### When to Extract vs. Mock
+
+**Extract to separate module** (like `pad.c`, `collections.c`) when:
+- Logic is pure (no SDL dependencies)
+- Functions can be reused across components
+- Code is tightly coupled to complex global state
+
+**Use SDL mocking** when:
+- Testing functions that directly call SDL
+- Verifying interaction with SDL APIs
+- Testing error handling (simulating SDL failures)
+
+**Skip testing** when:
+- Function is trivial (simple getter/setter)
+- Logic is entirely SDL rendering (test visually instead)
+- Would require massive extraction effort for minimal value
+
+### fff Documentation
+
+For more fff features, see:
+- [fff GitHub](https://github.com/meekrosoft/fff)
+- `tests/support/fff/fff.h` (inline documentation)
+- `tests/unit/all/common/test_sdl_mocking_example.c` (examples)
+
 ## Test Guidelines
 
 ### Good Test Characteristics
@@ -304,8 +472,53 @@ void test_getEmuName_with_parens(void) {
 
 **Note:** Extracted from `api.c` for reusability and testability.
 
+### workspace/all/common/pad.c - ✅ 21 tests
+**File:** `tests/unit/all/common/test_api_pad.c`
+
+- Button state management (PAD_reset, PAD_setAnalog)
+- Analog stick deadzone handling
+- Opposite direction cancellation (left/right, up/down)
+- Button repeat timing
+- Query functions (anyJustPressed, justPressed, isPressed, justReleased, justRepeated)
+- Menu tap detection (PAD_tappedMenu)
+
+**Coverage:** Complete coverage of input state machine logic.
+
+**Note:** Extracted from `api.c` for testability without SDL dependencies.
+
+### workspace/all/common/collections.c - ✅ 30 tests
+**File:** `tests/unit/all/common/test_collections.c`
+
+- Array lifecycle (Array_new, Array_free)
+- Array operations (push, pop, unshift, reverse)
+- Capacity growth (doubling when full)
+- StringArray operations (indexOf, StringArray_free)
+- Hash map operations (Hash_new, Hash_set, Hash_get, Hash_free)
+- Integration tests (ROM alias maps, recent games lists)
+
+**Coverage:** Complete coverage of dynamic array and hash map data structures.
+
+**Note:** Extracted from `minui.c` for reusability across all components.
+
+### SDL Mocking Infrastructure - ✅ 7 tests
+**File:** `tests/unit/all/common/test_sdl_mocking_example.c`
+
+- SDL event mocking (SDL_PollEvent)
+- TTF function mocking (TTF_SizeUTF8 with custom implementations)
+- fff framework features (call tracking, return sequences, history)
+
+**Coverage:** Demonstrates SDL mocking with Fake Function Framework (fff).
+
+**Infrastructure:**
+- `tests/support/fff/fff.h` - Fake Function Framework (header-only)
+- `tests/support/sdl_stubs.h` - Minimal SDL type definitions
+- `tests/support/sdl_fakes.h/c` - SDL function fakes
+- `tests/support/platform_mocks.h/c` - Platform function mocks
+
+**Note:** Provides foundation for future testing of SDL-dependent code.
+
 ### Todo
-- [ ] workspace/all/common/api.c (remaining functions require SDL mocks)
+- [ ] workspace/all/common/api.c GFX functions (requires extraction or complex mocking)
 - [ ] workspace/all/minui/minui.c (integration tests)
 - [ ] workspace/all/minarch/minarch.c (integration tests)
 - [ ] Integration tests for full launch workflow

@@ -15,6 +15,8 @@
  * - Hash_set/get - Key-value storage/retrieval
  */
 
+#define _POSIX_C_SOURCE 200809L  // Required for strdup()
+
 #include "../../support/unity/unity.h"
 #include "../../../../workspace/all/common/collections.h"
 #include <string.h>
