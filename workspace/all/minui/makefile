@@ -22,6 +22,7 @@ SDL?=SDL
 TARGET = minui
 INCDIR = -I. -I../common/ -I../../$(PLATFORM)/platform/
 SOURCE = $(TARGET).c ../common/scaler.c ../common/utils.c ../common/api.c ../common/collections.c ../common/pad.c ../common/gfx_text.c ../../$(PLATFORM)/platform/platform.c
+HEADERS = $(wildcard ../common/*.h) $(wildcard ../../$(PLATFORM)/platform/*.h)
 
 CC = $(CROSS_COMPILE)gcc
 CFLAGS   = $(ARCH) -fomit-frame-pointer
@@ -30,9 +31,12 @@ LDFLAGS	 = -ldl -lmsettings $(LIBS) -l$(SDL) -l$(SDL)_image -l$(SDL)_ttf -lpthre
 
 PRODUCT= build/$(PLATFORM)/$(TARGET).elf
 
-all: $(PREFIX)/include/msettings.h
+$(PRODUCT): $(SOURCE) $(HEADERS) | $(PREFIX)/include/msettings.h
 	mkdir -p build/$(PLATFORM)
 	$(CC) $(SOURCE) -o $(PRODUCT) $(CFLAGS) $(LDFLAGS)
+
+all: $(PRODUCT)
+
 clean:
 	rm -f $(PRODUCT)
 

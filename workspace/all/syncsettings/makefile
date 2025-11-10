@@ -16,6 +16,7 @@ endif
 
 TARGET = syncsettings
 SOURCE = $(TARGET).c
+HEADERS = $(wildcard ../../$(PLATFORM)/platform/msettings.h)
 
 CC = $(CROSS_COMPILE)gcc
 CFLAGS   = $(ARCH) -DPLATFORM=\"$(PLATFORM)\"
@@ -23,9 +24,12 @@ LDFLAGS	 = -Os -lmsettings -lrt -ldl -Wl,--gc-sections -s
 
 PRODUCT= build/$(PLATFORM)/$(TARGET).elf
 
-all: $(PREFIX)/include/msettings.h
+$(PRODUCT): $(SOURCE) $(HEADERS) | $(PREFIX)/include/msettings.h
 	mkdir -p build/$(PLATFORM)
 	$(CC) $(SOURCE) -o $(PRODUCT) $(CFLAGS) $(LDFLAGS)
+
+all: $(PRODUCT)
+
 clean:
 	rm -f $(PRODUCT)
 

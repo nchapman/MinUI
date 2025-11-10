@@ -66,6 +66,9 @@ MINUI_SOURCE = workspace/all/minui/minui.c \
                workspace/all/common/gfx_text.c \
                workspace/macos/platform/platform.c
 
+# Header files (dependencies)
+MINUI_HEADERS = $(wildcard workspace/all/common/*.h) $(wildcard workspace/macos/platform/*.h)
+
 # Build output
 BUILD_DIR = workspace/all/minui/build/macos
 MINUI_BIN = $(BUILD_DIR)/minui
@@ -89,7 +92,7 @@ check-sdl:
 	@rsync -a --delete skeleton/SYSTEM/res/ "$(FAKESD_PATH)/.system/res/"
 
 # Build minui for macOS
-dev: check-sdl
+$(MINUI_BIN): $(MINUI_SOURCE) $(MINUI_HEADERS)
 	@echo "Building minui for macOS (native)..."
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(MINUI_SOURCE) -o $(MINUI_BIN) $(INCDIR) $(CFLAGS) $(LDFLAGS)
@@ -97,6 +100,8 @@ dev: check-sdl
 	@echo ""
 	@echo "Run with: make dev-run"
 	@echo "Or directly: $(MINUI_BIN)"
+
+dev: check-sdl $(MINUI_BIN)
 
 # Build and run minui
 dev-run: dev

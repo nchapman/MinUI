@@ -22,6 +22,7 @@ SDL?=SDL
 TARGET = minarch
 INCDIR = -I. -I./libretro-common/include/ -I../common/ -I../../$(PLATFORM)/platform/
 SOURCE = $(TARGET).c ../common/scaler.c ../common/utils.c ../common/api.c ../common/collections.c ../common/pad.c ../common/gfx_text.c ../../$(PLATFORM)/platform/platform.c
+HEADERS = $(wildcard ../common/*.h) $(wildcard ../../$(PLATFORM)/platform/*.h)
 
 CC = $(CROSS_COMPILE)gcc
 CFLAGS   = $(ARCH) -fomit-frame-pointer
@@ -40,9 +41,12 @@ CFLAGS += -DBUILD_DATE=\"${BUILD_DATE}\" -DBUILD_HASH=\"${BUILD_HASH}\"
 
 PRODUCT= build/$(PLATFORM)/$(TARGET).elf
 
-all: libretro-common $(PREFIX)/include/msettings.h
+$(PRODUCT): $(SOURCE) $(HEADERS) | libretro-common $(PREFIX)/include/msettings.h
 	mkdir -p build/$(PLATFORM)
 	$(CC) $(SOURCE) -o $(PRODUCT) $(CFLAGS) $(LDFLAGS)
+
+all: $(PRODUCT)
+
 clean:
 	rm -f $(PRODUCT)
 
