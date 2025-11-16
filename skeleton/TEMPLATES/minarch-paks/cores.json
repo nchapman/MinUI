@@ -69,6 +69,62 @@
     "GG": {
       "emu_exe": "picodrive",
       "bundled_core": true
+    },
+    "N64": {
+      "emu_exe": "mupen64plus-next",
+      "bundled_core": true
+    },
+    "NDS": {
+      "emu_exe": "melonds",
+      "bundled_core": true
+    },
+    "PSP": {
+      "emu_exe": "ppsspp",
+      "bundled_core": true
+    },
+    "DC": {
+      "emu_exe": "flycast-xtreme",
+      "bundled_core": true
+    },
+    "A26": {
+      "emu_exe": "stella",
+      "bundled_core": true
+    },
+    "LYNX": {
+      "emu_exe": "beetle-lynx",
+      "bundled_core": true
+    },
+    "A52": {
+      "emu_exe": "a5200",
+      "bundled_core": true
+    },
+    "A78": {
+      "emu_exe": "prosystem",
+      "bundled_core": true
+    },
+    "SGX": {
+      "emu_exe": "beetle-supergrafx",
+      "bundled_core": true
+    },
+    "VEC": {
+      "emu_exe": "vecx",
+      "bundled_core": true
+    },
+    "MSX": {
+      "emu_exe": "bluemsx",
+      "bundled_core": true
+    },
+    "C64": {
+      "emu_exe": "vice",
+      "bundled_core": true
+    },
+    "ZXS": {
+      "emu_exe": "fuse",
+      "bundled_core": true
+    },
+    "SCUMM": {
+      "emu_exe": "scummvm",
+      "bundled_core": true
     }
   }
 }
