@@ -95,7 +95,7 @@
       "bundled_core": true
     },
     "A52": {
-      "emu_exe": "a5200",
+      "emu_exe": "atari800",
       "bundled_core": true
     },
     "A78": {
