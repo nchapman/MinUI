@@ -13,7 +13,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEMPLATE_DIR="$PROJECT_ROOT/skeleton/TEMPLATES"
+TEMPLATE_DIR="$PROJECT_ROOT/skeleton/TEMPLATES/minarch-paks"
+DIRECT_PAKS_DIR="$PROJECT_ROOT/skeleton/TEMPLATES/paks"
 BUILD_DIR="$PROJECT_ROOT/build"
 
 # Check if jq is available
@@ -90,7 +91,6 @@ generate_pak() {
 
     local cores_json_type="${core_type}_cores"
     local emu_exe=$(get_core_metadata "$cores_json_type" "$core" "emu_exe")
-    local cfg_template=$(get_core_metadata "$cores_json_type" "$core" "cfg_template")
 
     # Determine if this is a bundled core (EXTRAS only)
     local cores_path_override=""
@@ -108,28 +108,26 @@ generate_pak() {
 
     mkdir -p "$output_dir"
 
-    # Generate launch.sh from template
-    local launch_template="$TEMPLATE_DIR/paks/launch.sh.template"
+    # Generate launch.sh
     local launch_output="$output_dir/launch.sh"
 
-    sed -e "s|{{EMU_EXE}}|$emu_exe|g" \
-        -e "s|{{NICE_PREFIX}}|$nice_prefix|g" \
-        -e "s|{{CORES_PATH_OVERRIDE}}|$cores_path_override|g" \
-        "$launch_template" > "$launch_output"
-
-    chmod +x "$launch_output"
-
-    # Generate default.cfg from template
-    local cfg_template_file="$TEMPLATE_DIR/paks/configs/$cfg_template"
-    local cfg_output="$output_dir/default.cfg"
-
-    if [ ! -f "$cfg_template_file" ]; then
-        echo "    Warning: Config template $cfg_template not found, skipping"
-        return
+    # Generate from template with substitutions
+    local launch_template="$TEMPLATE_DIR/launch.sh.template"
+    if [ -f "$launch_template" ]; then
+        sed -e "s|{{EMU_EXE}}|$emu_exe|g" \
+            -e "s|{{NICE_PREFIX}}|$nice_prefix|g" \
+            -e "s|{{CORES_PATH_OVERRIDE}}|$cores_path_override|g" \
+            "$launch_template" > "$launch_output"
+        chmod +x "$launch_output"
     fi
 
-    sed -e "s|{{PLATFORM_MINARCH_SETTING}}|$minarch_setting|g" \
-        "$cfg_template_file" > "$cfg_output"
+    # Generate default.cfg from template (if config exists)
+    local cfg_template_file="$TEMPLATE_DIR/configs/${core}.cfg"
+    if [ -f "$cfg_template_file" ]; then
+        local cfg_output="$output_dir/default.cfg"
+        sed -e "s|{{PLATFORM_MINARCH_SETTING}}|$minarch_setting|g" \
+            "$cfg_template_file" > "$cfg_output"
+    fi
 }
 
 # Main generation loop
@@ -170,6 +168,18 @@ for platform in $PLATFORMS_TO_GENERATE; do
 
         generate_pak "$platform" "$core" "extra" "EXTRAS"
     done
+
+    # Copy direct paks (non-template paks like PAK.pak)
+    if [ -d "$DIRECT_PAKS_DIR" ]; then
+        echo "  Copying direct paks..."
+        for pak in "$DIRECT_PAKS_DIR"/*.pak; do
+            if [ -d "$pak" ]; then
+                pak_name=$(basename "$pak")
+                echo "    Copying ${pak_name}"
+                cp -r "$pak" "$BUILD_DIR/SYSTEM/$platform/paks/Emus/"
+            fi
+        done
+    fi
 
     echo ""
 done

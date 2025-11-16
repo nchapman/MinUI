@@ -109,15 +109,16 @@ Active platforms (as of most recent): miyoomini, trimuismart, rg35xx, rg35xxplus
 
 ### Pak Template System
 
-LessUI uses a **template-based system** to generate platform-specific `.pak` directories, eliminating duplication across platforms.
+LessUI uses **two systems** for generating platform-specific `.pak` directories:
 
-**Location:** `skeleton/TEMPLATES/paks/`
-
-**How it works:**
+**1. MinArch Paks** (`skeleton/TEMPLATES/minarch-paks/`) - Template-based for libretro cores:
 - `platforms.json` - Platform metadata (nice prefix, default settings)
 - `cores.json` - Core definitions (8 stock + 11 extra cores)
-- `launch.sh.template` - Launch script template with placeholders
-- `configs/` - Config templates for each core (19 total)
+- `launch.sh.template` - Shared launch script template
+- `configs/` - Config templates (19 configs generate 228 paks across platforms)
+
+**2. Direct Paks** (`skeleton/TEMPLATES/paks/`) - Copied as-is for special cases:
+- PAK.pak - Native application launcher (copied to all platforms)
 
 **Generation:**
 ```bash
@@ -130,12 +131,17 @@ make setup  # Generates all paks
 ./scripts/generate-paks.sh miyoomini GB GBA # Specific cores
 ```
 
-**Adding a new core:**
-1. Add to `skeleton/TEMPLATES/cores.json`
-2. Create `skeleton/TEMPLATES/paks/configs/<CORE>.cfg`
+**Adding a new emulator core:**
+1. Add to `skeleton/TEMPLATES/minarch-paks/cores.json`
+2. Create `skeleton/TEMPLATES/minarch-paks/configs/<CORE>.cfg`
 3. Run `./scripts/generate-paks.sh all`
 
-**Key benefit:** Edit one template → updates all 12 platforms (96 SYSTEM + 132 EXTRAS paks generated from 19 templates)
+**Adding a special pak:**
+1. Create directory in `skeleton/TEMPLATES/paks/<NAME>.pak/`
+2. Add `launch.sh` and any other files
+3. Run `./scripts/generate-paks.sh all` (copied to all platforms)
+
+**Key benefit:** One template → 12 platforms (108 SYSTEM + 132 EXTRAS = 240 total paks)
 
 See `docs/PAK-TEMPLATES.md` for comprehensive documentation.
 

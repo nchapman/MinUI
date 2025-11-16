@@ -58,6 +58,12 @@ Defines which cores to build and their properties:
 ```json
 {
   "stock_cores": {
+    "PAK": {
+      "emu_exe": "",
+      "cfg_template": "",
+      "no_config": true,
+      "empty_launch": true
+    },
     "GB": {
       "emu_exe": "gambatte",
       "cfg_template": "GB.cfg"
@@ -81,6 +87,8 @@ Defines which cores to build and their properties:
 - `emu_exe`: Core library name (becomes `${emu_exe}_libretro.so`)
 - `cfg_template`: Config template file in `paks/configs/`
 - `bundled_core`: (optional) If true, sets `CORES_PATH=$(dirname "$0")` to use bundled core
+- `no_config`: (optional) If true, skips default.cfg generation (used for PAK.pak)
+- `empty_launch`: (optional) If true, generates minimal `#!/bin/sh` launch script (used for PAK.pak)
 
 **Core Types:**
 - `stock_cores`: Installed in `SYSTEM/<platform>/paks/Emus/` (base install)

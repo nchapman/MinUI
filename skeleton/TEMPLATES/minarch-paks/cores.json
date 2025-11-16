@@ -1,92 +1,73 @@
 {
   "stock_cores": {
     "FC": {
-      "emu_exe": "fceumm",
-      "cfg_template": "FC.cfg"
+      "emu_exe": "fceumm"
     },
     "GB": {
-      "emu_exe": "gambatte",
-      "cfg_template": "GB.cfg"
+      "emu_exe": "gambatte"
     },
     "GBA": {
-      "emu_exe": "gpsp",
-      "cfg_template": "GBA.cfg"
+      "emu_exe": "gpsp"
     },
     "GBC": {
-      "emu_exe": "gambatte",
-      "cfg_template": "GBC.cfg"
+      "emu_exe": "gambatte"
     },
     "MD": {
-      "emu_exe": "picodrive",
-      "cfg_template": "MD.cfg"
+      "emu_exe": "picodrive"
     },
     "PS": {
-      "emu_exe": "pcsx_rearmed",
-      "cfg_template": "PS.cfg"
+      "emu_exe": "pcsx_rearmed"
     },
     "SFC": {
-      "emu_exe": "snes9x2005_plus",
-      "cfg_template": "SFC.cfg"
+      "emu_exe": "snes9x2005_plus"
     },
     "FBN": {
-      "emu_exe": "fbneo",
-      "cfg_template": "FBN.cfg"
+      "emu_exe": "fbneo"
     }
   },
   "extra_cores": {
     "VB": {
       "emu_exe": "beetle-vb",
-      "cfg_template": "VB.cfg",
       "bundled_core": true
     },
     "PCE": {
       "emu_exe": "beetle-pce-fast",
-      "cfg_template": "PCE.cfg",
       "bundled_core": true
     },
     "P8": {
       "emu_exe": "fake08",
-      "cfg_template": "P8.cfg",
       "bundled_core": true
     },
     "MGBA": {
       "emu_exe": "mgba",
-      "cfg_template": "MGBA.cfg",
       "bundled_core": true
     },
     "PKM": {
       "emu_exe": "pokemini",
-      "cfg_template": "PKM.cfg",
       "bundled_core": true
     },
     "NGPC": {
       "emu_exe": "race",
-      "cfg_template": "NGPC.cfg",
       "bundled_core": true
     },
     "NGP": {
       "emu_exe": "race",
-      "cfg_template": "NGP.cfg",
       "bundled_core": true
     },
     "SGB": {
       "emu_exe": "gambatte",
-      "cfg_template": "SGB.cfg",
       "bundled_core": true
     },
     "SMS": {
       "emu_exe": "picodrive",
-      "cfg_template": "SMS.cfg",
       "bundled_core": true
     },
     "SUPA": {
       "emu_exe": "mednafen_supafaust",
-      "cfg_template": "SUPA.cfg",
       "bundled_core": true
     },
     "GG": {
       "emu_exe": "picodrive",
-      "cfg_template": "GG.cfg",
       "bundled_core": true
     }
   }
