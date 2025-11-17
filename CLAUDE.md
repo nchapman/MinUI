@@ -105,7 +105,7 @@ make PLATFORM=miyoomini build
 
 ### Available Platforms
 
-Active platforms (as of most recent): miyoomini, trimuismart, rg35xx, rg35xxplus, my355, tg5040, zero28, rgb30, m17, gkdpixel, my282, magicmini
+Active platforms (as of most recent): miyoomini, trimuismart, rg35xx, rg35xxplus, my355, tg5040, zero28, rgb30, m17, my282, magicmini
 
 ### Pak Template System
 

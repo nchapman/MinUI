@@ -43,10 +43,6 @@
     "rg35xxplus": {
       "nice_prefix": "",
       "default_minarch_setting": "minarch_cpu_speed = Powersave"
-    },
-    "gkdpixel": {
-      "nice_prefix": "",
-      "default_minarch_setting": "minarch_cpu_speed = Powersave"
     }
   }
 }

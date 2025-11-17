@@ -48,7 +48,7 @@ RELEASE_NAME=$(RELEASE_BASE)-$(RELEASE_DOT)
 # Build configuration
 
 # Pre-built cores from minarch-cores repository (nightly builds)
-MINARCH_CORES_VERSION ?= nightly
+MINARCH_CORES_VERSION ?= 20251117
 CORES_BASE = https://github.com/nchapman/minarch-cores/releases/download/$(MINARCH_CORES_VERSION)
 
 .PHONY: build test lint format dev dev-run dev-run-4x3 dev-run-16x9 dev-clean all shell name clean setup done cores-download
@@ -112,15 +112,19 @@ system:
 	cp ./workspace/all/clock/build/$(PLATFORM)/clock.elf ./build/EXTRAS/Tools/$(PLATFORM)/Clock.pak/
 	cp ./workspace/all/minput/build/$(PLATFORM)/minput.elf ./build/EXTRAS/Tools/$(PLATFORM)/Input.pak/
 
-# Deploy shared libretro cores from LessUI-Cores builds
-# Cores are copied from /Users/nchapman/Code/LessUI-Cores/output/dist/
+# Deploy shared libretro cores from minarch-cores GitHub releases
+# Downloads and extracts cores for both ARM architectures
 cores-download:
-	@echo "Deploying shared cores from LessUI-Cores build..."
+	@echo "Downloading shared cores from minarch-cores $(MINARCH_CORES_VERSION)..."
 	@mkdir -p build/.system/cores/a7 build/.system/cores/a53
-	@echo "Extracting a7 cores (ARMv7 - cortex-a7/a9)..."
-	@unzip -j -q /Users/nchapman/Code/LessUI-Cores/output/dist/linux-cortex-a7.zip -d build/.system/cores/a7
-	@echo "Extracting a53 cores (ARMv8+ - cortex-a53/a55)..."
-	@unzip -j -q /Users/nchapman/Code/LessUI-Cores/output/dist/linux-cortex-a53.zip -d build/.system/cores/a53
+	@echo "Downloading a7 cores (ARMv7 - cortex-a7/a9)..."
+	@curl -sL $(CORES_BASE)/linux-cortex-a7.zip -o /tmp/lessui-cores-a7.zip
+	@unzip -o -j -q /tmp/lessui-cores-a7.zip -d build/.system/cores/a7
+	@rm /tmp/lessui-cores-a7.zip
+	@echo "Downloading a53 cores (ARMv8+ - cortex-a53/a55)..."
+	@curl -sL $(CORES_BASE)/linux-cortex-a53.zip -o /tmp/lessui-cores-a53.zip
+	@unzip -o -j -q /tmp/lessui-cores-a53.zip -d build/.system/cores/a53
+	@rm /tmp/lessui-cores-a53.zip
 	@echo "Cores deployed successfully:"
 	@echo "  a7:  $$(ls build/.system/cores/a7/*.so 2>/dev/null | wc -l | tr -d ' ') cores"
 	@echo "  a53: $$(ls build/.system/cores/a53/*.so 2>/dev/null | wc -l | tr -d ' ') cores"

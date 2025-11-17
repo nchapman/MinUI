@@ -36,11 +36,11 @@
   },
   "extra_cores": {
     "VB": {
-      "emu_exe": "beetle-vb",
+      "emu_exe": "mednafen_vb",
       "bundled_core": true
     },
     "PCE": {
-      "emu_exe": "beetle-pce-fast",
+      "emu_exe": "mednafen_pce_fast",
       "bundled_core": true
     },
     "P8": {
@@ -80,7 +80,7 @@
       "bundled_core": true
     },
     "N64": {
-      "emu_exe": "mupen64plus-next",
+      "emu_exe": "mupen64plus_next",
       "bundled_core": true
     },
     "NDS": {
@@ -92,7 +92,7 @@
       "bundled_core": true
     },
     "DC": {
-      "emu_exe": "flycast-xtreme",
+      "emu_exe": "flycast",
       "bundled_core": true
     },
     "A2600": {
@@ -100,7 +100,7 @@
       "bundled_core": true
     },
     "LYNX": {
-      "emu_exe": "beetle-lynx",
+      "emu_exe": "mednafen_lynx",
       "bundled_core": true
     },
     "A5200": {
@@ -112,7 +112,7 @@
       "bundled_core": true
     },
     "SGX": {
-      "emu_exe": "beetle-supergrafx",
+      "emu_exe": "mednafen_supergrafx",
       "bundled_core": true
     },
     "VEC": {
@@ -124,7 +124,7 @@
       "bundled_core": true
     },
     "C64": {
-      "emu_exe": "vice",
+      "emu_exe": "vice_x64",
       "bundled_core": true
     },
     "ZXS": {
@@ -156,19 +156,19 @@
       "bundled_core": true
     },
     "C128": {
-      "emu_exe": "vice",
+      "emu_exe": "vice_x64",
       "bundled_core": true
     },
     "VIC": {
-      "emu_exe": "vice",
+      "emu_exe": "vice_x64",
       "bundled_core": true
     },
     "PLUS4": {
-      "emu_exe": "vice",
+      "emu_exe": "vice_x64",
       "bundled_core": true
     },
     "PET": {
-      "emu_exe": "vice",
+      "emu_exe": "vice_x64",
       "bundled_core": true
     }
   }
