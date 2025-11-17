@@ -29,9 +29,7 @@ endif
 
 # Default platforms to build (can be overridden with PLATFORMS=...)
 ifeq (,$(PLATFORMS))
-# TEMP: Only building miyoomini for testing new core architecture
-PLATFORMS = miyoomini
-# PLATFORMS = miyoomini trimuismart rg35xx rg35xxplus my355 tg5040 zero28 rgb30 m17 my282 magicmini
+PLATFORMS = miyoomini trimuismart rg35xx rg35xxplus my355 tg5040 zero28 rgb30 m17 my282 magicmini
 endif
 
 ###########################################################
