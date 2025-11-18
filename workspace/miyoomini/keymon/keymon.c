@@ -293,16 +293,19 @@ static void checkADC(void) {
 	int current_charge = getADCValue();
 
 	// Log battery warnings
+	static int last_warn = 100;  // Initialize to high value, shared across calls
 	if (!is_charging) {
 		if (current_charge <= 5) {
 			LOG_warn("Battery critically low: %d%%", current_charge);
 		} else if (current_charge <= 10) {
-			static int last_warn = 0;
 			if (current_charge < last_warn) {  // Only warn when dropping
 				LOG_warn("Battery low: %d%%", current_charge);
 				last_warn = current_charge;
 			}
 		}
+	} else {
+		// Reset warning threshold when charging
+		last_warn = 100;
 	}
 
 	static int first_run = 1;

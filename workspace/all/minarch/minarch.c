@@ -1497,7 +1497,7 @@ static void Config_load(void) {
 		sprintf(device_system_path, SYSTEM_PATH "/system-%s.cfg", config.device_tag);
 
 	if (config.device_tag && exists(device_system_path)) {
-		LOG_info("using device_system_path: %s", device_system_path);
+		LOG_info("Using device_system_path: %s", device_system_path);
 		config.system_cfg = allocFile(device_system_path);
 	} else if (exists(system_path))
 		config.system_cfg = allocFile(system_path);
@@ -1521,7 +1521,7 @@ static void Config_load(void) {
 	}
 
 	if (config.device_tag && exists(device_default_path)) {
-		LOG_info("using device_default_path: %s", device_default_path);
+		LOG_info("Using device_default_path: %s", device_default_path);
 		config.default_cfg = allocFile(device_default_path);
 	} else if (exists(default_path))
 		config.default_cfg = allocFile(default_path);
@@ -2238,6 +2238,38 @@ static bool set_rumble_state(unsigned port, enum retro_rumble_effect effect, uin
 	VIB_setStrength(strength);
 	return 1;
 }
+
+/**
+ * Libretro log callback - maps libretro log levels to LessUI logging.
+ *
+ * Libretro log levels: DEBUG=0, INFO=1, WARN=2, ERROR=3
+ */
+static void retro_log_callback(enum retro_log_level level, const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+
+	char buffer[2048];
+	vsnprintf(buffer, sizeof(buffer), fmt, args);
+	va_end(args);
+
+	// Map libretro levels to our levels and log
+	switch (level) {
+	case RETRO_LOG_DEBUG:
+		LOG_debug("%s", buffer);
+		break;
+	case RETRO_LOG_INFO:
+		LOG_info("%s", buffer);
+		break;
+	case RETRO_LOG_WARN:
+		LOG_warn("%s", buffer);
+		break;
+	case RETRO_LOG_ERROR:
+	default:
+		LOG_error("%s", buffer);
+		break;
+	}
+}
+
 static bool environment_callback(unsigned cmd, void* data) { // copied from picoarch initially
 	// LOG_info("environment_callback: %i", cmd);
 
@@ -2361,8 +2393,7 @@ static bool environment_callback(unsigned cmd, void* data) { // copied from pico
 	case RETRO_ENVIRONMENT_GET_LOG_INTERFACE: { /* 27 */
 		struct retro_log_callback* log_cb = (struct retro_log_callback*)data;
 		if (log_cb)
-			log_cb->log =
-			    (void (*)(enum retro_log_level, const char*, ...))LOG_note; // same difference
+			log_cb->log = retro_log_callback;
 		break;
 	}
 	case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY: { /* 31 */

@@ -184,19 +184,26 @@ int log_rotate_file(LogFile* lf) {
 		char new_path[1024];
 
 		// Delete oldest
-		snprintf(old_path, sizeof(old_path), "%s.%d", lf->path, lf->max_backups);
-		unlink(old_path);
+		int old_path_len = snprintf(old_path, sizeof(old_path), "%s.%d", lf->path, lf->max_backups);
+		if (old_path_len >= 0 && old_path_len < (int)sizeof(old_path)) {
+			unlink(old_path);
+		}
 
 		// Rename backups
 		for (int i = lf->max_backups - 1; i >= 1; i--) {
-			snprintf(old_path, sizeof(old_path), "%s.%d", lf->path, i);
-			snprintf(new_path, sizeof(new_path), "%s.%d", lf->path, i + 1);
-			rename(old_path, new_path);
+			int old_len = snprintf(old_path, sizeof(old_path), "%s.%d", lf->path, i);
+			int new_len = snprintf(new_path, sizeof(new_path), "%s.%d", lf->path, i + 1);
+			if (old_len >= 0 && old_len < (int)sizeof(old_path) && new_len >= 0 &&
+			    new_len < (int)sizeof(new_path)) {
+				rename(old_path, new_path);
+			}
 		}
 
 		// Rename current file to .1
-		snprintf(new_path, sizeof(new_path), "%s.1", lf->path);
-		rename(lf->path, new_path);
+		int new_path_len = snprintf(new_path, sizeof(new_path), "%s.1", lf->path);
+		if (new_path_len >= 0 && new_path_len < (int)sizeof(new_path)) {
+			rename(lf->path, new_path);
+		}
 	}
 
 	// Open new file
@@ -219,6 +226,12 @@ LogFile* log_file_open(const char* path, size_t max_size, int max_backups) {
 	LogFile* lf = (LogFile*)calloc(1, sizeof(LogFile));
 	if (!lf)
 		return NULL;
+
+	// Validate path length to prevent truncation
+	if (strlen(path) >= sizeof(lf->path)) {
+		free(lf);
+		return NULL;
+	}
 
 	// Copy path
 	strncpy(lf->path, path, sizeof(lf->path) - 1);
@@ -277,12 +290,13 @@ void log_file_write(LogFile* lf, LogLevel level, const char* fmt, ...) {
 	pthread_mutex_lock(&lf->lock);
 
 	// Check if rotation needed
+	int rotate_ok = 1;
 	if (lf->max_size > 0 && lf->current_size + msg_len > lf->max_size) {
-		log_rotate_file(lf);
+		rotate_ok = (log_rotate_file(lf) != -1);
 	}
 
 	// Write message (with auto-newline)
-	if (lf->fp) {
+	if (rotate_ok && lf->fp) {
 		fprintf(lf->fp, "%s\n", full_message);
 		fflush(lf->fp);
 		lf->current_size += msg_len + 1; // +1 for newline
