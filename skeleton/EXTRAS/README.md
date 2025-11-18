@@ -1,27 +1,20 @@
 # LessUI Extras
 
-Optional emulator cores and tools for LessUI. These supplement the base installation with additional systems and utilities.
+Optional tools and utilities for LessUI. These supplement the base installation with platform-specific features.
 
 **Source:** https://github.com/nchapman/LessUI
+
+**Note:** All emulator cores are now included in the base install. This extras package contains only Tools.
 
 ---
 
 ## What's Included
 
-**Extra Emulator Cores:**
-- Neo Geo Pocket (and Color)
-- Pico-8
-- Pokémon mini
-- Sega Game Gear
-- Sega Master System
-- Super Game Boy
-- TurboGrafx-16 (and TurboGrafx-CD)
-- Virtual Boy
-
 **Platform-Specific Tools:**
 - File managers
 - Configuration utilities
-- Platform-specific tweaks
+- Boot logo customization
+- Platform-specific tweaks and utilities
 
 ---
 
@@ -29,8 +22,7 @@ Optional emulator cores and tools for LessUI. These supplement the base installa
 
 Copy the desired folders from this archive to the corresponding locations on your LessUI SD card:
 
-- `Emus/<platform>/` → `/Emus/<platform>/` (emulator paks)
-- `Tools/<platform>/` → `/Tools/<platform>/` (tool paks)
+- `Tools/<platform>/` → `/Tools/<platform>/`
 
 **Platform identifiers:**
 - `miyoomini` - Miyoo Mini/Plus
@@ -52,21 +44,7 @@ Copy the desired folders from this archive to the corresponding locations on you
 
 Check the release notes to see what changed. Only copy updated paks you want to your device's specific folders.
 
-Example: If GBA.pak was updated for miyoomini, copy just that pak to `/Emus/miyoomini/` on your SD card.
-
----
-
-## BIOS Files
-
-Some extra cores require BIOS files. Place them in `Bios/<TAG>/`:
-
-**Required BIOS:**
-- **MGBA** (GBA): `gba_bios.bin`
-- **PCE** (PC Engine): `syscard3.pce`
-- **PKM** (Pokémon mini): `bios.min`
-- **SGB** (Super Game Boy): `sgb.bios`
-
-**Note:** Filenames are case-sensitive. LessUI is strictly BYOB (bring your own BIOS).
+Example: If a Wi-Fi tool was updated for rgb30, copy just that pak to `/Tools/rgb30/` on your SD card.
 
 ---
 

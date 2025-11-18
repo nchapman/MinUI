@@ -68,14 +68,6 @@ get_core_metadata() {
     jq -r ".${core_type}.\"$core\".\"$key\"" "$CORES_JSON"
 }
 
-# Function to check if core is bundled
-is_bundled_core() {
-    local core_type=$1
-    local core=$2
-    local bundled=$(jq -r ".${core_type}.\"$core\".bundled_core // false" "$CORES_JSON")
-    [ "$bundled" = "true" ]
-}
-
 # Function to check if core requires ARM64
 is_arm64_only() {
     local core_type=$1
@@ -131,13 +123,6 @@ generate_pak() {
     local cores_json_type="${core_type}_cores"
     local emu_exe=$(get_core_metadata "$cores_json_type" "$core" "emu_exe")
 
-    # Determine if this is a bundled core (EXTRAS only)
-    local cores_path_override=""
-    if [ "$output_base" = "EXTRAS" ] && is_bundled_core "$cores_json_type" "$core"; then
-        # shellcheck disable=SC2016 -- we want the literal string with unexpanded variable syntax for template substitution
-        cores_path_override='CORES_PATH=$(dirname "$0")'
-    fi
-
     # Create output directory
     local output_dir="$BUILD_DIR/$output_base"
     if [ "$output_base" = "SYSTEM" ]; then
@@ -156,7 +141,6 @@ generate_pak() {
     if [ -f "$launch_template" ]; then
         sed -e "s|{{EMU_EXE}}|$emu_exe|g" \
             -e "s|{{NICE_PREFIX}}|$nice_prefix|g" \
-            -e "s|{{CORES_PATH_OVERRIDE}}|$cores_path_override|g" \
             "$launch_template" > "$launch_output"
         chmod +x "$launch_output"
     fi
@@ -182,14 +166,11 @@ echo ""
 for platform in $PLATFORMS_TO_GENERATE; do
     echo "Platform: $platform"
 
-    # Get stock cores
-    STOCK_CORES=$(jq -r '.stock_cores | keys[]' "$CORES_JSON")
+    # Get all cores from stock_cores
+    CORES=$(jq -r '.stock_cores | keys[]' "$CORES_JSON")
 
-    # Get extra cores
-    EXTRA_CORES=$(jq -r '.extra_cores | keys[]' "$CORES_JSON")
-
-    # Generate stock cores (SYSTEM)
-    for core in $STOCK_CORES; do
+    # Generate all core paks (SYSTEM)
+    for core in $CORES; do
         # If specific cores requested, filter
         if ! core_in_target_list "$core"; then
             continue
@@ -202,22 +183,6 @@ for platform in $PLATFORMS_TO_GENERATE; do
         fi
 
         generate_pak "$platform" "$core" "stock" "SYSTEM"
-    done
-
-    # Generate extra cores (EXTRAS)
-    for core in $EXTRA_CORES; do
-        # If specific cores requested, filter
-        if ! core_in_target_list "$core"; then
-            continue
-        fi
-
-        # Check architecture compatibility
-        if ! is_core_compatible_with_platform "$platform" "extra_cores" "$core"; then
-            echo "  Skipping $core (requires ARM64)"
-            continue
-        fi
-
-        generate_pak "$platform" "$core" "extra" "EXTRAS"
     done
 
     # Copy direct paks (non-template paks like PAK.pak)

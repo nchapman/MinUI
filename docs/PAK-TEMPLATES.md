@@ -15,7 +15,7 @@ skeleton/
 ├── TEMPLATES/
 │   ├── minarch-paks/           # Template system for libretro core paks
 │   │   ├── platforms.json      # Platform metadata (nice prefix, default settings)
-│   │   ├── cores.json          # Core definitions (emu_exe, bundled status)
+│   │   ├── cores.json          # Core definitions (emu_exe, architecture requirements)
 │   │   ├── launch.sh.template  # Launch script template (shared by all cores)
 │   │   └── configs/            # Config templates (one per core)
 │   │       ├── GB.cfg
@@ -69,16 +69,10 @@ Defines which cores to build and their properties:
     },
     "GBA": {
       "emu_exe": "gpsp"
-    }
-  },
-  "extra_cores": {
-    "VB": {
-      "emu_exe": "mednafen_vb",
-      "bundled_core": true
     },
     "N64": {
       "emu_exe": "mupen64plus_next",
-      "bundled_core": true
+      "arm64_only": true
     }
   }
 }
@@ -86,11 +80,9 @@ Defines which cores to build and their properties:
 
 **Fields:**
 - `emu_exe`: Core library name (becomes `${emu_exe}_libretro.so`)
-- `bundled_core`: (optional) If true, sets `CORES_PATH=$(dirname "$0")` to use bundled core from pak directory
+- `arm64_only`: (optional) If true, core is only generated for ARM64 platforms (miyoomini and other ARM32 platforms skip it)
 
-**Core Types:**
-- `stock_cores`: Installed in `SYSTEM/<platform>/paks/Emus/` (base install)
-- `extra_cores`: Installed in `EXTRAS/Emus/<platform>/` (optional download)
+**All cores use shared libretro .so files** from `/mnt/SDCARD/.system/cores/{a7,a53}` - no bundled cores in paks
 
 ### 3. Launch Script Template (`launch.sh.template`)
 
@@ -100,7 +92,6 @@ Template with placeholders:
 #!/bin/sh
 
 EMU_EXE={{EMU_EXE}}
-{{CORES_PATH_OVERRIDE}}
 ###############################
 
 EMU_TAG=$(basename "$(dirname "$0")" .pak)
@@ -115,7 +106,8 @@ cd "$HOME"
 **Placeholders:**
 - `{{EMU_EXE}}`: Replaced with core name (e.g., `gambatte`)
 - `{{NICE_PREFIX}}`: Replaced with `nice -20 ` or empty string
-- `{{CORES_PATH_OVERRIDE}}`: Replaced with `CORES_PATH=$(dirname "$0")` for bundled cores, or empty
+
+Note: `$CORES_PATH` is set globally in `MinUI.pak/launch.sh` to point to shared cores directory
 
 ### 4. Config Templates (`paks/configs/*.cfg`)
 
@@ -167,11 +159,11 @@ Or manually:
 
 ## Adding a New Core
 
-1. **Add to `cores.json`**:
+1. **Add to `cores.json`** under `stock_cores`:
    ```json
    "NEWCORE": {
      "emu_exe": "newcore_name",
-     "bundled_core": true  // optional - if EXTRAS core with bundled .so
+     "arm64_only": true  // optional - only if core requires ARM64
    }
    ```
 
@@ -251,18 +243,11 @@ One-time extraction script that created the initial templates from `skeleton/SYS
 
 **Committed to Git:**
 - `skeleton/TEMPLATES/` - Templates and metadata (source of truth)
-- `skeleton/SYSTEM/*/paks/` - Original paks (for reference during migration)
-- `skeleton/EXTRAS/Emus/` - Original paks (for reference during migration)
+- `skeleton/SYSTEM/*/paks/` - Platform-specific system files (MinUI.pak, Tools, etc.)
 
 **Generated (not committed):**
-- `build/SYSTEM/*/paks/` - Generated during build
-- `build/EXTRAS/Emus/` - Generated during build
-
-**After Migration:**
-Once the template system is fully validated, we can:
-1. Delete the old paks from `skeleton/SYSTEM/` and `skeleton/EXTRAS/`
-2. Update `.gitignore` to ignore generated paks
-3. Keep only templates in Git
+- `build/SYSTEM/*/paks/Emus/` - Generated emulator paks during build
+- `build/PAYLOAD/` - Release packaging directory
 
 ## Benefits
 

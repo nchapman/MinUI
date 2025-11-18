@@ -1,7 +1,6 @@
 #!/bin/sh
 
 EMU_EXE={{EMU_EXE}}
-{{CORES_PATH_OVERRIDE}}
 ###############################
 
 EMU_TAG=$(basename "$(dirname "$0")" .pak)

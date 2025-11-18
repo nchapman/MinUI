@@ -113,9 +113,9 @@ LessUI uses **two systems** for generating platform-specific `.pak` directories:
 
 **1. MinArch Paks** (`skeleton/TEMPLATES/minarch-paks/`) - Template-based for libretro cores:
 - `platforms.json` - Platform metadata (nice prefix, default settings)
-- `cores.json` - Core definitions (8 stock + 11 extra cores)
+- `cores.json` - Core definitions (43 cores, all included in base install)
 - `launch.sh.template` - Shared launch script template
-- `configs/` - Config templates (19 configs generate 228 paks across platforms)
+- `configs/` - Config templates for all supported cores
 
 **2. Direct Paks** (`skeleton/TEMPLATES/paks/`) - Copied as-is for special cases:
 - PAK.pak - Native application launcher (copied to all platforms)
@@ -141,7 +141,7 @@ make setup  # Generates all paks
 2. Add `launch.sh` and any other files
 3. Run `./scripts/generate-paks.sh all` (copied to all platforms)
 
-**Key benefit:** One template → 12 platforms (108 SYSTEM + 132 EXTRAS = 240 total paks)
+**Key benefit:** One template → 12 platforms (~500 paks, all included in base install)
 
 See `docs/PAK-TEMPLATES.md` for comprehensive documentation.
 

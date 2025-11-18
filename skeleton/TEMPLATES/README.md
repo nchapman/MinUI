@@ -8,7 +8,7 @@ This directory contains templates for generating platform-specific `.pak` direct
 TEMPLATES/
 ├── minarch-paks/           # Template system for libretro core paks
 │   ├── platforms.json      # Platform metadata (nice prefix, default settings)
-│   ├── cores.json          # Core definitions (emu_exe, bundled status)
+│   ├── cores.json          # Core definitions (emu_exe, arm64_only flag)
 │   ├── launch.sh.template  # Launch script template (shared by all cores)
 │   └── configs/            # Config templates (one per core)
 │       ├── GB.cfg
@@ -104,7 +104,6 @@ That's it! The core will be generated for all 12 platforms.
 ### launch.sh.template (MinArch paks)
 - `{{EMU_EXE}}` - Core library name (becomes `${EMU_EXE}_libretro.so`)
 - `{{NICE_PREFIX}}` - CPU priority prefix (`nice -20 ` or empty)
-- `{{CORES_PATH_OVERRIDE}}` - Sets `CORES_PATH=$(dirname "$0")` for bundled cores
 
 ### configs/*.cfg (MinArch paks)
 - `{{PLATFORM_MINARCH_SETTING}}` - Platform-specific first-line setting
@@ -112,7 +111,7 @@ That's it! The core will be generated for all 12 platforms.
 ## Files
 
 - **Source of truth**: This directory (`skeleton/TEMPLATES/`)
-- **Generated** (during build): `build/SYSTEM/*/paks/`, `build/EXTRAS/Emus/*/`
+- **Generated** (during build): `build/SYSTEM/*/paks/Emus/`
 - **Never committed**: Generated paks (see `.gitignore`)
 
 ## Why Two Systems?
@@ -120,7 +119,7 @@ That's it! The core will be generated for all 12 platforms.
 **MinArch paks** all share the same structure:
 - Same launch script (only `emu_exe` varies)
 - Platform-specific configs
-- Generate 228 paks from 19 configs ✅ DRY
+- Generate ~500 paks from 43 core configs ✅ DRY
 
 **Direct paks** are unique:
 - Different structure (like PAK.pak with no config)
