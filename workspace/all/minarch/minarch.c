@@ -1539,13 +1539,15 @@ static void Config_load(void) {
 	if (!override)
 		Config_getPath(path, CONFIG_WRITE_ALL);
 
-	config.user_cfg = allocFile(path);
-	if (!config.user_cfg)
-		return;
-
-	LOG_info("Loaded user config: %s", path);
-
-	config.loaded = override ? CONFIG_GAME : CONFIG_CONSOLE;
+	if (exists(path)) {
+		config.user_cfg = allocFile(path);
+		if (!config.user_cfg)
+			return;
+		LOG_info("Loaded user config: %s", path);
+		config.loaded = override ? CONFIG_GAME : CONFIG_CONSOLE;
+	} else {
+		config.user_cfg = NULL;
+	}
 }
 static void Config_free(void) {
 	if (config.system_cfg)
