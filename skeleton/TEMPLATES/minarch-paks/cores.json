@@ -1,0 +1,182 @@
+{
+  "stock_cores": {
+    "FC": {
+      "emu_exe": "fceumm"
+    },
+    "GB": {
+      "emu_exe": "gambatte"
+    },
+    "GBA": {
+      "emu_exe": "gpsp"
+    },
+    "GBC": {
+      "emu_exe": "gambatte"
+    },
+    "MD": {
+      "emu_exe": "picodrive"
+    },
+    "PS": {
+      "emu_exe": "pcsx_rearmed"
+    },
+    "SFC": {
+      "emu_exe": "snes9x2005_plus"
+    },
+    "FBN": {
+      "emu_exe": "fbneo"
+    },
+    "CPS1": {
+      "emu_exe": "fbneo"
+    },
+    "CPS2": {
+      "emu_exe": "fbneo"
+    },
+    "CPS3": {
+      "emu_exe": "fbneo"
+    },
+    "MAME": {
+      "emu_exe": "mame2003_plus"
+    }
+  },
+  "extra_cores": {
+    "VB": {
+      "emu_exe": "mednafen_vb",
+      "bundled_core": true
+    },
+    "PCE": {
+      "emu_exe": "mednafen_pce_fast",
+      "bundled_core": true
+    },
+    "P8": {
+      "emu_exe": "fake08",
+      "bundled_core": true
+    },
+    "MGBA": {
+      "emu_exe": "mgba",
+      "bundled_core": true
+    },
+    "PKM": {
+      "emu_exe": "pokemini",
+      "bundled_core": true
+    },
+    "NGPC": {
+      "emu_exe": "race",
+      "bundled_core": true
+    },
+    "NGP": {
+      "emu_exe": "race",
+      "bundled_core": true
+    },
+    "SGB": {
+      "emu_exe": "gambatte",
+      "bundled_core": true
+    },
+    "SMS": {
+      "emu_exe": "picodrive",
+      "bundled_core": true
+    },
+    "SUPA": {
+      "emu_exe": "mednafen_supafaust",
+      "bundled_core": true
+    },
+    "GG": {
+      "emu_exe": "picodrive",
+      "bundled_core": true
+    },
+    "N64": {
+      "emu_exe": "mupen64plus_next",
+      "bundled_core": true,
+      "arm64_only": true
+    },
+    "NDS": {
+      "emu_exe": "melonds",
+      "bundled_core": true,
+      "arm64_only": true
+    },
+    "PSP": {
+      "emu_exe": "ppsspp",
+      "bundled_core": true,
+      "arm64_only": true
+    },
+    "DC": {
+      "emu_exe": "flycast",
+      "bundled_core": true,
+      "arm64_only": true
+    },
+    "A2600": {
+      "emu_exe": "stella",
+      "bundled_core": true
+    },
+    "LYNX": {
+      "emu_exe": "mednafen_lynx",
+      "bundled_core": true
+    },
+    "A5200": {
+      "emu_exe": "atari800",
+      "bundled_core": true
+    },
+    "A7800": {
+      "emu_exe": "prosystem",
+      "bundled_core": true
+    },
+    "SGX": {
+      "emu_exe": "mednafen_supergrafx",
+      "bundled_core": true
+    },
+    "VEC": {
+      "emu_exe": "vecx",
+      "bundled_core": true
+    },
+    "MSX": {
+      "emu_exe": "bluemsx",
+      "bundled_core": true
+    },
+    "C64": {
+      "emu_exe": "vice_x64",
+      "bundled_core": true
+    },
+    "ZXS": {
+      "emu_exe": "fuse",
+      "bundled_core": true
+    },
+    "SCUMM": {
+      "emu_exe": "scummvm",
+      "bundled_core": true
+    },
+    "32X": {
+      "emu_exe": "picodrive",
+      "bundled_core": true
+    },
+    "SEGACD": {
+      "emu_exe": "picodrive",
+      "bundled_core": true
+    },
+    "SG1000": {
+      "emu_exe": "picodrive",
+      "bundled_core": true
+    },
+    "FDS": {
+      "emu_exe": "fceumm",
+      "bundled_core": true
+    },
+    "COLECO": {
+      "emu_exe": "bluemsx",
+      "bundled_core": true
+    },
+    "C128": {
+      "emu_exe": "vice_x64",
+      "bundled_core": true
+    },
+    "VIC": {
+      "emu_exe": "vice_x64",
+      "bundled_core": true
+    },
+    "PLUS4": {
+      "emu_exe": "vice_x64",
+      "bundled_core": true
+    },
+    "PET": {
+      "emu_exe": "vice_x64",
+      "bundled_core": true
+    }
+  }
+}

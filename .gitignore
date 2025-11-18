@@ -10,10 +10,21 @@ releases
 toolchains
 libretro-common
 
+# Old per-platform cores (no longer used - migrated to shared cores)
 **/cores/src
 **/cores/output
+workspace/shared/*/cores/
+
+# New shared cores architecture
+build/.system/cores/
 **/boot/output
 **/squashfs/output
+
+# Generated paks (from skeleton/TEMPLATES/)
+# Note: Old duplicated paks removed from skeleton/SYSTEM/*/paks/Emus/ and skeleton/EXTRAS/Emus/
+# Paks are now generated during build from templates - see docs/PAK-TEMPLATES.md
+build/SYSTEM/*/paks/Emus/*.pak
+build/EXTRAS/Emus/*/*.pak
 
 **/other/evtest
 **/other/jstest
