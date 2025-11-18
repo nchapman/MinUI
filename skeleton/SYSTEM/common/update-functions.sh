@@ -46,31 +46,47 @@ atomic_system_update() {
 		fi
 	fi
 
-	# Cleanup old .tmp_update (silent - not critical)
-	rm -rf "$sdcard/.tmp_update-old" 2>/dev/null
-	mv "$sdcard/.tmp_update" "$sdcard/.tmp_update-old" 2>/dev/null
+	# Backup old .tmp_update if it exists
+	if [ -d "$sdcard/.tmp_update" ]; then
+		log_info "Backing up existing .tmp_update to .tmp_update-prev..."
+		# Remove any stale backup first
+		rm -rf "$sdcard/.tmp_update-prev"
+		# Create fresh backup
+		mv "$sdcard/.tmp_update" "$sdcard/.tmp_update-prev" 2>/dev/null
+	fi
 
 	# Extract update
 	if unzip -o "$update_zip" -d "$sdcard" >> "$log" 2>&1; then
 		log_info "Unzip complete"
-		# Success - remove backup and cleanup
+		# Success - remove backups and cleanup
 		rm -rf "$system_dir-prev"
-		rm -rf "$sdcard/.tmp_update-old"
+		rm -rf "$sdcard/.tmp_update-prev"
 		rm -f "$update_zip"
 		return 0
 	else
 		local exit_code=$?
 		log_error "Unzip failed with exit code $exit_code"
 
-		# Failure - restore backup
+		# Failure - restore backups
 		if [ -d "$system_dir-prev" ]; then
 			log_info "Restoring .system from backup..."
 			# Force remove partial .system before restore
 			rm -rf "$system_dir"
 			if mv "$system_dir-prev" "$system_dir"; then
-				log_info "Backup restored successfully"
+				log_info ".system backup restored successfully"
 			else
-				log_error "CRITICAL: Failed to restore backup!"
+				log_error "CRITICAL: Failed to restore .system backup!"
+			fi
+		fi
+
+		if [ -d "$sdcard/.tmp_update-prev" ]; then
+			log_info "Restoring .tmp_update from backup..."
+			# Force remove partial .tmp_update before restore
+			rm -rf "$sdcard/.tmp_update"
+			if mv "$sdcard/.tmp_update-prev" "$sdcard/.tmp_update"; then
+				log_info ".tmp_update backup restored successfully"
+			else
+				log_error "WARNING: Failed to restore .tmp_update backup"
 			fi
 		fi
 
