@@ -32,7 +32,7 @@ INIT_IF_NECESSARY=toolchains/$(PLATFORM)-toolchain/.build
 
 # Default target: ensure toolchain is built, then launch interactive shell
 all: $(INIT_IF_NECESSARY)
-	docker run --rm -v $(HOST_WORKSPACE):$(GUEST_WORKSPACE) $(PLATFORM)-toolchain /bin/bash
+	docker run --rm -e LOG_FLAGS="$(LOG_FLAGS)" -v $(HOST_WORKSPACE):$(GUEST_WORKSPACE) $(PLATFORM)-toolchain /bin/bash
 
 # Build Docker image (if not already built)
 $(INIT_IF_NECESSARY): $(GIT_IF_NECESSARY)
@@ -60,4 +60,4 @@ clean:
 
 # Build all workspace components in Docker (non-interactive)
 build: $(INIT_IF_NECESSARY)
-	docker run --rm -v $(HOST_WORKSPACE):$(GUEST_WORKSPACE) $(PLATFORM)-toolchain /bin/bash -c '. ~/.bashrc && cd /root/workspace && make'
+	docker run --rm -e LOG_FLAGS="$(LOG_FLAGS)" -v $(HOST_WORKSPACE):$(GUEST_WORKSPACE) $(PLATFORM)-toolchain /bin/bash -c '. ~/.bashrc && cd /root/workspace && make'
