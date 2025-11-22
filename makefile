@@ -206,8 +206,8 @@ setup: name
 
 	# Copy boot assets to workspace for platforms that build them in Docker
 	mkdir -p ./workspace/rg35xx/boot
-	cp ./skeleton/SYSTEM/res/installing@2x.bmp ./workspace/rg35xx/boot/
-	cp ./skeleton/SYSTEM/res/updating@2x.bmp ./workspace/rg35xx/boot/
+	cp ./skeleton/SYSTEM/res/installing@2x-16bit.bmp ./workspace/rg35xx/boot/installing@2x.bmp
+	cp ./skeleton/SYSTEM/res/updating@2x-16bit.bmp ./workspace/rg35xx/boot/updating@2x.bmp
 	cp ./skeleton/SYSTEM/res/bootlogo@2x.png ./workspace/rg35xx/boot/boot_logo.png
 	mkdir -p ./workspace/rg35xxplus/boot
 	cp ./skeleton/SYSTEM/res/installing@2x.bmp ./workspace/rg35xxplus/boot/
@@ -290,10 +290,8 @@ package: tidy
 	cp -R ./build/.system/cores ./build/PAYLOAD/.system/
 	cp -R ./build/BOOT/.tmp_update ./build/PAYLOAD/
 
-	@command -v pigz >/dev/null 2>&1 && echo "Using pigz for parallel compression..." || true
-	@command -v pigz >/dev/null 2>&1 && \
-		(cd ./build/PAYLOAD && tar -cvf - .system .tmp_update | pigz > LessUI.zip) || \
-		(cd ./build/PAYLOAD && zip -r LessUI.zip .system .tmp_update)
+	# Create LessUI.zip for update installer
+	cd ./build/PAYLOAD && zip -r LessUI.zip .system .tmp_update
 	mv ./build/PAYLOAD/LessUI.zip ./build/BASE
 
 	# TODO: can I just add everything in BASE to zip?

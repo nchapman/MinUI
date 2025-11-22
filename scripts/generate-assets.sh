@@ -28,6 +28,13 @@ if ! command -v magick &> /dev/null && ! command -v convert &> /dev/null; then
     exit 1
 fi
 
+# Check for ffmpeg (needed for 16-bit RGB565 BMPs)
+if ! command -v ffmpeg &> /dev/null; then
+    echo "ERROR: ffmpeg is required to generate 16-bit boot assets"
+    echo "Install with: brew install ffmpeg"
+    exit 1
+fi
+
 # pngquant removed - caused color degradation on boot screens
 # PNG files are small enough without compression
 
@@ -49,43 +56,48 @@ for ASSET in installing updating bootlogo charging; do
     $MAGICK $SRC/$ASSET.png -resize 640x480! -define png:color-type=2 $OUT/$ASSET@2x.png
     $MAGICK $SRC/$ASSET.png -resize 960x720! -define png:color-type=2 $OUT/$ASSET@3x.png
 
-    # BMP variants (for dd platforms - 24-bit, standard 54-byte header)
+    # BMP variants (for dd platforms - various bit depths, top-down scanlines)
+    # NOTE: Generate normally, then negate height header to make top-down
     echo "  Generating BMP variants..."
 
-    # @1x: 320×240 (4:3) - gkdpixel
+    # @1x: 320×240 (4:3) - gkdpixel (32-bit BGRA)
     $MAGICK $SRC/$ASSET.png -resize 320x240! \
-        -type TrueColor -define bmp:format=bmp3 \
-        $OUT/$ASSET@1x.bmp
+        -define bmp3:alpha=true BMP3:$OUT/$ASSET@1x.bmp
+    ./scripts/bmp-topdown.sh $OUT/$ASSET@1x.bmp $OUT/$ASSET@1x.bmp.tmp && mv $OUT/$ASSET@1x.bmp.tmp $OUT/$ASSET@1x.bmp
 
-    # @1x-wide: 480×272 (16:9) - m17
-    # Scale to 480 width, then crop/pad to 480×272
+    # @1x-wide: 480×272 (16:9) - m17 (32-bit BGRA)
     $MAGICK $SRC/$ASSET.png -resize 480x360! -gravity center \
         -crop 480x272+0+0 +repage -background black -flatten \
-        -type TrueColor -define bmp:format=bmp3 \
-        $OUT/$ASSET@1x-wide.bmp
+        -define bmp3:alpha=true BMP3:$OUT/$ASSET@1x-wide.bmp
+    ./scripts/bmp-topdown.sh $OUT/$ASSET@1x-wide.bmp $OUT/$ASSET@1x-wide.bmp.tmp && mv $OUT/$ASSET@1x-wide.bmp.tmp $OUT/$ASSET@1x-wide.bmp
 
-    # @2x: 640×480 (4:3) - magicmini, rg35xxplus standard
+    # @2x: 640×480 (4:3) - rg35xxplus standard, magicmini (32-bit BGRA)
     $MAGICK $SRC/$ASSET.png -resize 640x480! \
-        -type TrueColor -define bmp:format=bmp3 \
-        $OUT/$ASSET@2x.bmp
+        -define bmp3:alpha=true BMP3:$OUT/$ASSET@2x.bmp
+    ./scripts/bmp-topdown.sh $OUT/$ASSET@2x.bmp $OUT/$ASSET@2x.bmp.tmp && mv $OUT/$ASSET@2x.bmp.tmp $OUT/$ASSET@2x.bmp
 
-    # @2x-rotated: 480×640 (portrait) - rg35xxplus 28xx
+    # @2x-16bit: 640×480 (4:3) - rg35xx (16-bit RGB565)
+    # Note: ImageMagick can't create 16-bit BMPs, use ffmpeg instead
+    ffmpeg -i $SRC/$ASSET.png -vf scale=640:480 -pix_fmt rgb565le -y $OUT/$ASSET@2x-16bit.bmp 2>/dev/null
+    ./scripts/bmp-topdown.sh $OUT/$ASSET@2x-16bit.bmp $OUT/$ASSET@2x-16bit.bmp.tmp && mv $OUT/$ASSET@2x-16bit.bmp.tmp $OUT/$ASSET@2x-16bit.bmp
+
+    # @2x-rotated: 480×640 (portrait) - rg35xxplus 28xx (32-bit BGRA)
     $MAGICK $SRC/$ASSET.png -resize 640x480! -rotate 90 \
         -gravity center -crop 480x640+0+0 +repage \
-        -type TrueColor -define bmp:format=bmp3 \
-        $OUT/$ASSET@2x-rotated.bmp
+        -define bmp3:alpha=true BMP3:$OUT/$ASSET@2x-rotated.bmp
+    ./scripts/bmp-topdown.sh $OUT/$ASSET@2x-rotated.bmp $OUT/$ASSET@2x-rotated.bmp.tmp && mv $OUT/$ASSET@2x-rotated.bmp.tmp $OUT/$ASSET@2x-rotated.bmp
 
-    # @2x-square: 720×720 (1:1) - rg35xxplus cubexx
+    # @2x-square: 720×720 (1:1) - rg35xxplus cubexx (32-bit BGRA)
     $MAGICK $SRC/$ASSET.png -resize 960x720! -gravity center \
         -crop 720x720+0+0 +repage \
-        -type TrueColor -define bmp:format=bmp3 \
-        $OUT/$ASSET@2x-square.bmp
+        -define bmp3:alpha=true BMP3:$OUT/$ASSET@2x-square.bmp
+    ./scripts/bmp-topdown.sh $OUT/$ASSET@2x-square.bmp $OUT/$ASSET@2x-square.bmp.tmp && mv $OUT/$ASSET@2x-square.bmp.tmp $OUT/$ASSET@2x-square.bmp
 
-    # @2x-wide: 720×480 (3:2) - rg35xxplus 34xx
+    # @2x-wide: 720×480 (3:2) - rg35xxplus 34xx (32-bit BGRA)
     $MAGICK $SRC/$ASSET.png -resize 720x540! -gravity center \
         -crop 720x480+0+0 +repage -background black -flatten \
-        -type TrueColor -define bmp:format=bmp3 \
-        $OUT/$ASSET@2x-wide.bmp
+        -define bmp3:alpha=true BMP3:$OUT/$ASSET@2x-wide.bmp
+    ./scripts/bmp-topdown.sh $OUT/$ASSET@2x-wide.bmp $OUT/$ASSET@2x-wide.bmp.tmp && mv $OUT/$ASSET@2x-wide.bmp.tmp $OUT/$ASSET@2x-wide.bmp
 
     echo "  ✓ Generated all variants for $ASSET"
     echo ""
