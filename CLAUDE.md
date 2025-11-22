@@ -242,6 +242,23 @@ tests/
 - See `tests/README.md` for comprehensive guide
 - See `docs/testing-checklist.md` for testing roadmap
 
+### Clean Build
+
+To ensure all build artifacts are removed and force a complete rebuild:
+
+```bash
+make clean  # Removes all build artifacts (./build, workspace build dirs, boot outputs)
+make setup  # Prepares fresh build directory and copies assets
+```
+
+The `clean` target removes:
+- `./build/` - Final release staging directory
+- `workspace/all/*/build/` - Component build directories
+- `workspace/*/boot/output/` - Platform boot asset outputs
+- Copied boot assets (*.bmp files in workspace)
+
+**Note:** Boot asset generation scripts (`workspace/*/boot/build.sh`) always regenerate output files, even if they exist. This ensures asset updates are always picked up during builds.
+
 ### Git Workflow
 
 ```bash

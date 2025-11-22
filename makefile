@@ -167,6 +167,21 @@ common: build system
 clean:
 	rm -rf ./build
 	rm -rf ./workspace/readmes
+	# Clean workspace/all component build directories
+	rm -rf workspace/all/minui/build
+	rm -rf workspace/all/minarch/build
+	rm -rf workspace/all/clock/build
+	rm -rf workspace/all/minput/build
+	rm -rf workspace/all/say/build
+	rm -rf workspace/all/syncsettings/build
+	# Clean platform-specific boot outputs
+	rm -rf workspace/rg35xxplus/boot/output
+	rm -rf workspace/rg35xx/boot/output
+	rm -rf workspace/m17/boot/output
+	# Clean copied boot assets
+	rm -f workspace/rg35xxplus/boot/*.bmp
+	rm -f workspace/rg35xx/boot/*.bmp workspace/rg35xx/boot/boot_logo.png
+	rm -f workspace/m17/boot/*.bmp
 
 # Prepare fresh build directory and skeleton
 setup: name
