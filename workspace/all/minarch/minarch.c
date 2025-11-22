@@ -3078,6 +3078,12 @@ static void buffer_downsample_neon(const void* data, unsigned width, unsigned he
  * @note Uses NEON optimization when HAS_NEON is defined (3-4x speedup)
  */
 static void buffer_downsample(const void* data, unsigned width, unsigned height, size_t pitch) {
+	// Validate buffer was allocated (buffer_realloc must be called first)
+	if (!buffer) {
+		LOG_error("Downsample buffer not allocated - skipping frame");
+		return;
+	}
+
 	const uint32_t* input = data;
 	uint16_t* output = buffer;
 
@@ -3099,8 +3105,10 @@ static void buffer_downsample(const void* data, unsigned width, unsigned height,
 	}
 
 	// Calculate stride: number of pixels to skip after each scanline
-	// For a 160-pixel-wide image with 568-pixel pitch:
-	//   extra = 568 - 160 = 408 pixels of padding per line
+	// For XRGB8888 (4 bytes/pixel), extra padding per line is:
+	//   extra = (pitch / 4) - width
+	// Example: For a 160-pixel-wide image with 640-byte pitch (160 × 4):
+	//   extra = (640 / 4) - 160 = 0 pixels of padding per line
 	size_t extra = pitch / sizeof(uint32_t) - width;
 
 	LOG_debug("Downsampling %ux%u XRGB8888->RGB565: pitch=%zu bytes, stride=%zu pixels", width,
@@ -3119,8 +3127,8 @@ static void buffer_downsample(const void* data, unsigned width, unsigned height,
 	buffer_downsample_neon(data, width, height, pitch);
 #else
 	// Scalar fallback: Convert XRGB8888 to RGB565 pixel-by-pixel
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
+	for (unsigned y = 0; y < height; y++) {
+		for (unsigned x = 0; x < width; x++) {
 			// Optimized single-operation conversion:
 			// Extract R (bits 23-19), G (bits 15-10), B (bits 7-3) and pack into RGB565
 			uint32_t pixel = *input;
@@ -3442,7 +3450,7 @@ static void video_refresh_callback_main(const void* data, unsigned width, unsign
 
 	// if source has changed size (or forced by dst_p==0)
 	// eg. true src + cropped src + fixed dst + cropped dst
-	if (renderer.dst_p == 0 || width != renderer.true_w || height != renderer.true_h) {
+	if (renderer.dst_p == 0 || (int)width != renderer.true_w || (int)height != renderer.true_h) {
 		selectScaler(width, height, rgb565_pitch);
 		GFX_clearAll();
 	}
@@ -3520,8 +3528,8 @@ static void video_refresh_callback(const void* data, unsigned width, unsigned he
 		size_t backbuffer_pitch = downsample ? (width * FIXED_BPP) : pitch;
 
 		// Reallocate backbuffer if dimensions changed
-		if (backbuffer && (backbuffer->w != width || backbuffer->h != height ||
-		                   backbuffer->pitch != backbuffer_pitch)) {
+		if (backbuffer && (backbuffer->w != (int)width || backbuffer->h != (int)height ||
+		                   backbuffer->pitch != (int)backbuffer_pitch)) {
 			free(backbuffer->pixels);
 			SDL_FreeSurface(backbuffer);
 			backbuffer = NULL;
@@ -3546,6 +3554,11 @@ static void video_refresh_callback(const void* data, unsigned width, unsigned he
 		if (downsample) {
 			// Core provided XRGB8888, convert to tightly-packed RGB565
 			buffer_downsample(data, width, height, pitch);
+			if (!buffer) {
+				LOG_error("Failed to allocate downsample buffer: %ux%u", width, height);
+				pthread_mutex_unlock(&core_mx);
+				return;
+			}
 			memcpy(backbuffer->pixels, buffer, height * backbuffer_pitch);
 		} else {
 			// Core provided RGB565, direct copy with original pitch
