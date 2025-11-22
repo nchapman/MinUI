@@ -95,7 +95,7 @@ Find bugs before they ship:
 make lint        # Check common code
 ```
 
-This runs `cppcheck` on `workspace/all/` which contains all the platform-independent code.
+This runs `clang-tidy` on `workspace/all/` which contains all the platform-independent code.
 
 ### Unit Tests
 

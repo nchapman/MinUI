@@ -18,8 +18,8 @@ jobs:
       - name: Install linting tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format shellcheck cppcheck
-          cppcheck --version
+          sudo apt-get install -y clang-tidy clang-format shellcheck
+          clang-tidy --version
 
       - name: Run all linting checks
         run: make lint

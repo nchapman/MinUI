@@ -3,7 +3,7 @@
 #
 # This makefile provides quality assurance tools for the LessUI codebase:
 #   - Unit tests (Docker-based, using Debian Buster + GCC 8.3.0)
-#   - Static analysis (cppcheck for C code, shellcheck for scripts)
+#   - Static analysis (clang-tidy for C code, shellcheck for scripts)
 #   - Code formatting (clang-format with project style)
 #
 # Quick start:
@@ -21,12 +21,12 @@ help:
 	@echo ""
 	@echo "Main targets (use these):"
 	@echo "  make test          - Run unit tests (Docker, recommended)"
-	@echo "  make lint          - Run ALL linting checks (cppcheck, format-check, shellcheck)"
+	@echo "  make lint          - Run ALL linting checks (clang-tidy, format-check, shellcheck)"
 	@echo "  make format        - Format code with clang-format (MODIFIES FILES)"
 	@echo ""
 	@echo "Individual lint targets:"
-	@echo "  make lint-code     - Run cppcheck on workspace/all/"
-	@echo "  make lint-full     - Run cppcheck on entire workspace (verbose)"
+	@echo "  make lint-code     - Run clang-tidy on workspace/all/"
+	@echo "  make lint-full     - Run clang-tidy on entire workspace (verbose)"
 	@echo "  make analyze       - Run Clang Static Analyzer (deep analysis)"
 	@echo "  make format-check  - Check if code is formatted (no changes)"
 	@echo "  make lint-shell    - Run shellcheck on shell scripts"
@@ -41,28 +41,53 @@ help:
 	@echo "  make clean-qa      - Clean QA artifacts"
 	@echo ""
 	@echo "Installing tools:"
-	@echo "  macOS:  brew install cppcheck llvm shellcheck sdl2 sdl2_image sdl2_ttf"
-	@echo "  Ubuntu: sudo apt-get install cppcheck clang-tools clang-format shellcheck libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev"
+	@echo "  macOS:  brew install llvm shellcheck sdl2 sdl2_image sdl2_ttf"
+	@echo "  Ubuntu: sudo apt-get install clang-tidy clang-format shellcheck libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev"
 
-# cppcheck configuration
-# Checks for: warnings, performance issues, style problems
-# workspace/all/ has zero issues (fully cleaned)
-# Platform-specific code uses targeted suppressions
-CPPCHECK_FLAGS = --enable=warning,performance,portability \
-                 --suppressions-list=.cppcheck-suppressions \
-                 --inline-suppr \
-                 --error-exitcode=1 \
-                 --quiet
+# clang-tidy configuration
+# Checks for: bugs, performance issues, readability, security
+# Configuration in .clang-tidy file
+# workspace/all/ is the primary focus (platform-independent code)
+CLANG_TIDY = clang-tidy
+TIDY_FLAGS = --quiet
 
-# Check if cppcheck is installed
-check-cppcheck:
-	@which cppcheck > /dev/null || (echo "Error: cppcheck not installed. Run 'brew install cppcheck' or 'apt-get install cppcheck'" && exit 1)
+# Source files to analyze (same as cppcheck previously checked)
+# Note: clock.c is excluded because it uses GCC nested functions (non-standard)
+TIDY_SOURCES = workspace/all/minui/*.c \
+               workspace/all/minarch/*.c \
+               workspace/all/common/*.c \
+               workspace/all/minput/*.c \
+               workspace/all/say/*.c \
+               workspace/all/syncsettings/*.c
+
+# Auto-detect SDL2 include path (works on both macOS and Ubuntu)
+SDL2_CFLAGS := $(shell sdl2-config --cflags 2>/dev/null)
+
+# Compiler flags for clang-tidy (needs to understand how to compile the code)
+# These match the actual build environment
+# Using macos platform for header compatibility during analysis
+TIDY_COMPILE_FLAGS = -DPLATFORM=\"macos\" \
+                     -DSDCARD_PATH=\"../../macos/FAKESD\" \
+                     -DUSE_SDL2 \
+                     -DBUILD_DATE=\"$(shell date +%Y%m%d)\" \
+                     -DBUILD_HASH=\"tidy\" \
+                     -I workspace/all/common \
+                     -I workspace/macos/platform \
+                     -I workspace/all/minarch/libretro-common/include \
+                     -I tests/support \
+                     $(SDL2_CFLAGS) \
+                     -I/opt/homebrew/include \
+                     -std=gnu99
+
+# Check if clang-tidy is installed
+check-clang-tidy:
+	@which $(CLANG_TIDY) > /dev/null || (echo "Error: clang-tidy not installed. Run 'brew install llvm' or 'apt-get install clang-tidy'" && exit 1)
 
 check-shellcheck:
 	@which shellcheck > /dev/null || (echo "Error: shellcheck not installed. Run 'brew install shellcheck' or 'apt-get install shellcheck'" && exit 1)
 
 # Run all linting checks (code, format, shell scripts)
-lint: check-cppcheck check-clang-format check-shellcheck
+lint: check-clang-tidy check-clang-format check-shellcheck
 	@echo "=================================" && \
 	echo "Running ALL linting checks..." && \
 	echo "=================================" && \
@@ -77,30 +102,28 @@ lint: check-cppcheck check-clang-format check-shellcheck
 	echo "✓ All linting checks passed" && \
 	echo "================================="
 
-# Run cppcheck on common code (platform-independent, highest priority)
-lint-code: check-cppcheck
-	@echo "Running cppcheck on workspace/all/ (common code)..."
-	@echo "Checking for: NULL dereferences, memory leaks, buffer overflows, uninitialized variables"
+# Run clang-tidy on common code (platform-independent, highest priority)
+lint-code: check-clang-tidy
+	@echo "Running clang-tidy on workspace/all/ (common code)..."
+	@echo "Checking for: bugs, performance issues, readability, security vulnerabilities"
 	@echo ""
-	cppcheck $(CPPCHECK_FLAGS) \
-		-I workspace/all/common \
-		-I tests/support \
-		workspace/all/minui/ \
-		workspace/all/minarch/ \
-		workspace/all/common/ \
-		workspace/all/clock/ \
-		workspace/all/minput/ \
-		workspace/all/say/ \
-		workspace/all/syncsettings/
+	@for file in $(TIDY_SOURCES); do \
+		if [ -f "$$file" ]; then \
+			$(CLANG_TIDY) $(TIDY_FLAGS) "$$file" -- $(TIDY_COMPILE_FLAGS) || exit 1; \
+		fi; \
+	done
 	@echo ""
 	@echo "✓ Static analysis complete"
 
-# Run cppcheck on entire workspace (includes platform-specific code)
-lint-full: check-cppcheck
-	@echo "Running cppcheck on entire workspace..."
-	cppcheck $(CPPCHECK_FLAGS) \
-		-I workspace/all/common \
-		workspace/
+# Run clang-tidy on entire workspace (includes platform-specific code)
+lint-full: check-clang-tidy
+	@echo "Running clang-tidy on entire workspace..."
+	@find workspace -name "*.c" -type f \
+		-not -path "*/libretro-common/*" \
+		-not -path "*/cores/*" \
+		-not -path "*/toolchains/*" \
+		-not -path "*/other/*" \
+		-exec $(CLANG_TIDY) $(TIDY_FLAGS) {} -- $(TIDY_COMPILE_FLAGS) \;
 
 # Clang Static Analyzer (deep dataflow analysis)
 # Finds: NULL derefs, memory leaks, dead code, logic errors
@@ -348,16 +371,18 @@ lint-shell: check-shellcheck
 
 clean-qa:
 	@echo "Cleaning QA artifacts..."
-	rm -f cppcheck-report.txt
+	rm -f clang-tidy-report.txt
 
 # Generate static analysis report file
-report: check-cppcheck
+report: check-clang-tidy
 	@echo "Generating static analysis report..."
-	cppcheck $(CPPCHECK_FLAGS) --template="{file}:{line}: {severity}: {message}" \
-		-I workspace/all/common \
-		workspace/all/ > cppcheck-report.txt 2>&1 || true
-	@echo "Report saved to cppcheck-report.txt"
-	@wc -l cppcheck-report.txt
+	@for file in $(TIDY_SOURCES); do \
+		if [ -f "$$file" ]; then \
+			$(CLANG_TIDY) "$$file" -- $(TIDY_COMPILE_FLAGS) 2>&1 || true; \
+		fi; \
+	done > clang-tidy-report.txt
+	@echo "Report saved to clang-tidy-report.txt"
+	@wc -l clang-tidy-report.txt
 
 ###########################################################
 # Docker Testing (recommended for consistency)

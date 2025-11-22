@@ -348,7 +348,7 @@ See `.clang-format` for complete style definition.
 
 4. **libretro-common is third-party** - Don't modify files in `workspace/all/minarch/libretro-common/`. This is upstream code.
 
-5. **Static analysis warnings** - cppcheck may warn about unknown macros (e.g., `PLATFORM`). This is expected. Use suppressions in `.cppcheck-suppressions` if needed.
+5. **Static analysis warnings** - clang-tidy may report warnings about code patterns. Configuration is in `.clang-tidy`. Most warnings for legacy code patterns are already suppressed.
 
 6. **Shell scripts** - Use `.shellcheckrc` configuration for linting. Many legacy scripts have disabled warnings; new scripts should be cleaner.
 
