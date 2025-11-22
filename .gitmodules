@@ -1,0 +1,3 @@
+[submodule "workspace/all/minarch/libretro-common"]
+	path = workspace/all/minarch/libretro-common
+	url = https://github.com/libretro/libretro-common
