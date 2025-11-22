@@ -27,6 +27,7 @@ HEADERS = $(wildcard ../common/*.h) $(wildcard ../../$(PLATFORM)/platform/*.h)
 CC = $(CROSS_COMPILE)gcc
 CFLAGS   = $(ARCH) -fomit-frame-pointer
 CFLAGS  += $(INCDIR) -DPLATFORM=\"$(PLATFORM)\" -DUSE_$(SDL) $(LOG_FLAGS) -Ofast -std=gnu99
+CFLAGS  += -Wall -Wextra -Wsign-compare -Wno-unused-variable -Wno-unused-function -Wno-format-overflow -Wno-unused-parameter
 LDFLAGS	 = -ldl -lmsettings $(LIBS) -l$(SDL) -l$(SDL)_image -l$(SDL)_ttf -lpthread -lm -lz
 
 PRODUCT= build/$(PLATFORM)/$(TARGET).elf

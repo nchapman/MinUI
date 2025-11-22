@@ -29,7 +29,7 @@ CFLAGS   = $(ARCH) -fomit-frame-pointer
 CFLAGS  += $(INCDIR) -DPLATFORM=\"$(PLATFORM)\" -DUSE_$(SDL) $(LOG_FLAGS) -Ofast -std=gnu99
 CFLAGS	+= -Os -flto
 LDFLAGS	 = -ldl $(LIBS) -lmsettings -l$(SDL) -l$(SDL)_image -l$(SDL)_ttf -lpthread -lm -lz
-# CFLAGS  += -Wall -Wno-unused-variable -Wno-unused-function -Wno-format-overflow
+CFLAGS  += -Wall -Wextra -Wsign-compare -Wno-unused-variable -Wno-unused-function -Wno-format-overflow -Wno-unused-parameter
 # CFLAGS  += -fsanitize=address -fno-common
 # LDFLAGS += -lasan
 
