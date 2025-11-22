@@ -1206,7 +1206,13 @@ static void SND_resizeBuffer(void) { // plat_sound_resize_buffer
 	SDL_LockAudio();
 
 	int buffer_bytes = snd.frame_count * sizeof(SND_Frame);
-	snd.buffer = realloc(snd.buffer, buffer_bytes);
+	void* new_buffer = realloc(snd.buffer, buffer_bytes);
+	if (!new_buffer) {
+		LOG_error("Failed to allocate audio buffer (%d bytes)\n", buffer_bytes);
+		SDL_UnlockAudio();
+		return;
+	}
+	snd.buffer = new_buffer;
 
 	memset(snd.buffer, 0, buffer_bytes);
 

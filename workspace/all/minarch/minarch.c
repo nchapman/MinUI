@@ -766,7 +766,8 @@ static void State_read(void) {
 	char filename[MAX_PATH];
 	State_getPath(filename);
 
-	FILE* state_file = fopen(filename, "r");
+	FILE* state_file = NULL;
+	state_file = fopen(filename, "r");
 	if (!state_file) {
 		if (state_slot != 8) { // st8 is a default state in MiniUI and may not exist, that's okay
 			LOG_error("Error opening state file: %s (%s)", filename, strerror(errno));
@@ -821,7 +822,8 @@ static void State_write(void) {
 	char filename[MAX_PATH];
 	State_getPath(filename);
 
-	FILE* state_file = fopen(filename, "w");
+	FILE* state_file = NULL;
+	state_file = fopen(filename, "w");
 	if (!state_file) {
 		LOG_error("Error opening state file: %s (%s)", filename, strerror(errno));
 		goto error;
@@ -2033,6 +2035,13 @@ static void OptionList_init(const struct retro_core_option_definition* defs) {
 			int len;
 			const struct retro_core_option_definition* def = &defs[i];
 			Option* item = &config.core.options[i];
+
+			// Defensive check - should never happen if core reports options correctly
+			if (!def->key) {
+				LOG_error("Core option %d has NULL key", i);
+				continue;
+			}
+
 			len = strlen(def->key) + 1;
 
 			item->key = calloc(len, sizeof(char));
