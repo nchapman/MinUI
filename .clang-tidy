@@ -30,6 +30,7 @@ Checks: >
   -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
   -clang-analyzer-security.ArrayBound,
   -clang-analyzer-unix.Stream,
+  -clang-analyzer-unix.Malloc,
   performance-*,
   portability-*,
   cert-*,

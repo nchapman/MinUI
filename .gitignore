@@ -8,7 +8,6 @@
 build
 releases
 toolchains
-libretro-common
 
 # Old per-platform cores (no longer used - migrated to shared cores)
 **/cores/src
