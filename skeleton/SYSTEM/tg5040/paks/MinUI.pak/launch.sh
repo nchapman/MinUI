@@ -38,7 +38,8 @@ if [ -f "$SDCARD_PATH/.system/common/log.sh" ]; then
 	log_init "$LOGS_PATH/minui.log"
 fi
 
-export TRIMUI_MODEL=`strings /usr/trimui/bin/MainUI | grep ^Trimui`
+TRIMUI_MODEL=`strings /usr/trimui/bin/MainUI | grep ^Trimui`
+export TRIMUI_MODEL
 if [ "$TRIMUI_MODEL" = "Trimui Brick" ]; then
 	export DEVICE="brick"
 fi

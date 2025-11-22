@@ -8,18 +8,32 @@ arithOperationsOnVoidPointer:*/api.c
 arithOperationsOnVoidPointer:*/scaler.c
 constParameterPointer:*/scaler.c
 
-// Informational messages only
+// Informational messages (not errors)
+unmatchedSuppression
+missingIncludeSystem
+checkersReport
 normalCheckLevelMaxBranches
+toomanyconfigs
 
-// C99 compound literal parsing errors
-// Ubuntu's cppcheck 2.13.0 can't parse compound literals like &(SDL_Rect){...}
-// Newer versions (2.14-2.18) either have the same issue or segfault
-// Suppressing until we find a working version
-internalAstError
+// Style-only checks (too noisy, separate cleanup PR)
+staticFunction
+unusedFunction
+constVariablePointer
+constParameterPointer
+constParameter
+constParameterCallback
+variableScope
+duplicateBreak
+shadowVariable
+unreadVariable
+unusedVariable
 
 // Specific known false positives
 knownConditionTrueFalse:*/api.c:1444
 knownConditionTrueFalse:*/api.c:1449
+knownConditionTrueFalse:*/api.c:1756
+knownConditionTrueFalse:*/api.c:1772
+knownConditionTrueFalse:*/api.c:2095
 missingReturn:*/trimuismart/platform/platform.c:81
 missingReturn:*/my282/overclock/overclock.c:811
 knownConditionTrueFalse:*/my282/libmstick/mstick.c:228

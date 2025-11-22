@@ -241,12 +241,12 @@ typedef int (*Zip_extract_t)(FILE* zip, FILE* dst, size_t size);
  * @return 0 on success, -1 on error
  */
 static int Zip_copy(FILE* zip, FILE* dst, size_t size) {
-	uint8_t buffer[ZIP_CHUNK_SIZE];
+	uint8_t chunk[ZIP_CHUNK_SIZE];
 	while (size) {
 		size_t sz = MIN(size, ZIP_CHUNK_SIZE);
-		if (sz != fread(buffer, 1, sz, zip))
+		if (sz != fread(chunk, 1, sz, zip))
 			return -1;
-		if (sz != fwrite(buffer, 1, sz, dst))
+		if (sz != fwrite(chunk, 1, sz, dst))
 			return -1;
 		size -= sz;
 	}
@@ -2535,24 +2535,24 @@ static void retro_log_callback(enum retro_log_level level, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 
-	char buffer[2048];
-	vsnprintf(buffer, sizeof(buffer), fmt, args);
+	char msg_buffer[2048];
+	vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
 	va_end(args);
 
 	// Map libretro levels to our levels and log
 	switch (level) {
 	case RETRO_LOG_DEBUG:
-		LOG_debug("%s", buffer);
+		LOG_debug("%s", msg_buffer);
 		break;
 	case RETRO_LOG_INFO:
-		LOG_info("%s", buffer);
+		LOG_info("%s", msg_buffer);
 		break;
 	case RETRO_LOG_WARN:
-		LOG_warn("%s", buffer);
+		LOG_warn("%s", msg_buffer);
 		break;
 	case RETRO_LOG_ERROR:
 	default:
-		LOG_error("%s", buffer);
+		LOG_error("%s", msg_buffer);
 		break;
 	}
 }
@@ -3557,7 +3557,7 @@ static void selectScaler(int src_w, int src_h, int src_p) {
 
 		// odd resolutions (eg. PS1 Rayman: 320x239) is throwing this off, need to snap to eights
 		int r = (DEVICE_HEIGHT - src_h) % 8;
-		if (r && r < 8)
+		if (r) // r is always < 8 (result of % 8)
 			scale_y -= 1;
 
 		scale = MAX(scale_x, scale_y);
