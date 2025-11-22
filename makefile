@@ -128,7 +128,7 @@ cores-download:
 		echo "Using local a7 cores from workspace/cores-override/..."; \
 		unzip -o -j -q workspace/cores-override/linux-cortex-a7.zip -d build/.system/cores/a7; \
 	else \
-		echo "Downloading a7 cores (ARMv7 - cortex-a7/a9) from minarch-cores $(MINARCH_CORES_VERSION)..."; \
+		echo "Downloading a7 cores (ARM32 - all 32-bit platforms) from minarch-cores $(MINARCH_CORES_VERSION)..."; \
 		curl -sL $(CORES_BASE)/linux-cortex-a7.zip -o /tmp/lessui-cores-a7.zip; \
 		unzip -o -j -q /tmp/lessui-cores-a7.zip -d build/.system/cores/a7; \
 		rm /tmp/lessui-cores-a7.zip; \
@@ -137,14 +137,14 @@ cores-download:
 		echo "Using local a53 cores from workspace/cores-override/..."; \
 		unzip -o -j -q workspace/cores-override/linux-cortex-a53.zip -d build/.system/cores/a53; \
 	else \
-		echo "Downloading a53 cores (ARMv8+ - cortex-a53/a55) from minarch-cores $(MINARCH_CORES_VERSION)..."; \
+		echo "Downloading a53 cores (ARM64 - all 64-bit platforms) from minarch-cores $(MINARCH_CORES_VERSION)..."; \
 		curl -sL $(CORES_BASE)/linux-cortex-a53.zip -o /tmp/lessui-cores-a53.zip; \
 		unzip -o -j -q /tmp/lessui-cores-a53.zip -d build/.system/cores/a53; \
 		rm /tmp/lessui-cores-a53.zip; \
 	fi
 	@echo "Cores deployed successfully:"
-	@echo "  a7:  $$(ls build/.system/cores/a7/*.so 2>/dev/null | wc -l | tr -d ' ') cores"
-	@echo "  a53: $$(ls build/.system/cores/a53/*.so 2>/dev/null | wc -l | tr -d ' ') cores"
+	@echo "  a7:  $$(ls build/.system/cores/a7/*.so 2>/dev/null | wc -l | tr -d ' ') cores (ARM32)"
+	@echo "  a53: $$(ls build/.system/cores/a53/*.so 2>/dev/null | wc -l | tr -d ' ') cores (ARM64)"
 
 # Legacy cores target - now just points to shared cores
 cores:
@@ -266,9 +266,12 @@ package: tidy
 	cp -R ./build/.system/cores ./build/PAYLOAD/.system/
 	cp -R ./build/BOOT/.tmp_update ./build/PAYLOAD/
 
-	cd ./build/PAYLOAD && zip -r LessUI.zip .system .tmp_update
+	@command -v pigz >/dev/null 2>&1 && echo "Using pigz for parallel compression..." || true
+	@command -v pigz >/dev/null 2>&1 && \
+		(cd ./build/PAYLOAD && tar -cvf - .system .tmp_update | pigz > LessUI.zip) || \
+		(cd ./build/PAYLOAD && zip -r LessUI.zip .system .tmp_update)
 	mv ./build/PAYLOAD/LessUI.zip ./build/BASE
-	
+
 	# TODO: can I just add everything in BASE to zip?
 	cd ./build/BASE && zip -r ../../releases/$(RELEASE_NAME)-base.zip Bios Roms Saves miyoo miyoo354 trimui rg35xx rg35xxplus miyoo355 magicx miyoo285 em_ui.sh LessUI.zip README.txt
 	cd ./build/EXTRAS && zip -r ../../releases/$(RELEASE_NAME)-extras.zip Bios Roms Saves Tools README.txt
