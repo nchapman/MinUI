@@ -167,18 +167,18 @@ make dev-clean     # Clean macOS build artifacts
 - Compiles minui natively on macOS using system gcc/clang
 - Links against Homebrew SDL2 libraries
 - Runs in SDL2 window (640×480 for 4x3, 854×480 for 16x9)
-- Uses fake SD card at `workspace/macos/FAKESD/` instead of actual device storage
+- Uses fake SD card at `workspace/desktop/FAKESD/` instead of actual device storage
 - Keyboard input: Arrow keys (D-pad), A/S/W/Q (face buttons), Enter (Start), 4 (Select), Space (Menu)
 - Quit: Hold Backspace/Delete
 
 **Setting up test ROMs:**
 ```bash
 # Create console directories
-mkdir -p workspace/macos/FAKESD/Roms/GB
-mkdir -p workspace/macos/FAKESD/Roms/GBA
+mkdir -p workspace/desktop/FAKESD/Roms/GB
+mkdir -p workspace/desktop/FAKESD/Roms/GBA
 
 # Add test ROMs
-cp ~/Downloads/game.gb workspace/macos/FAKESD/Roms/GB/
+cp ~/Downloads/game.gb workspace/desktop/FAKESD/Roms/GB/
 ```
 
 **Use cases:**
@@ -195,9 +195,9 @@ cp ~/Downloads/game.gb workspace/macos/FAKESD/Roms/GB/
 
 **Implementation details:**
 - Source files: Same as production minui build (from `workspace/all/minui/makefile`)
-- Platform code: `workspace/macos/platform/platform.{h,c}` provides macOS-specific stubs
+- Platform code: `workspace/desktop/platform/platform.{h,c}` provides macOS-specific stubs
 - Build output: `workspace/all/minui/build/macos/minui` binary
-- See `workspace/macos/FAKESD/README.md` for SD card structure
+- See `workspace/desktop/FAKESD/README.md` for SD card structure
 
 ### Quality Assurance (makefile.qa)
 

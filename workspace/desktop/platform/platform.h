@@ -1,28 +1,28 @@
 /**
- * ubuntu/platform/platform.h - Platform definitions for CI/linting
+ * desktop/platform/platform.h - Platform definitions for desktop development/testing/CI
  *
- * This is a CI platform for static analysis and linting:
- * - 640x480 display (standard VGA resolution)
- * - Uses SDL2 for compatibility
- * - All button mappings defined for complete code coverage
- * - Minimal configuration suitable for clang-tidy analysis
+ * This is a development platform for testing MinUI on desktop systems (macOS, Linux):
+ * - 640x480 display (VGA resolution, 2x scaled)
+ * - Uses SDL2 for cross-platform compatibility
+ * - FAKESD path for local development, /tmp for CI
+ * - No joystick input support
+ * - Stub implementations for platform-specific functions
  *
- * @note This platform is for CI/testing only, not for actual deployment
+ * @note This platform is for development/CI only, not production deployment
  */
 
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
 ///////////////////////////////
-// Build Information
+// Dependencies
 ///////////////////////////////
 
-#define PLATFORM "ubuntu"
-#define USE_SDL2 1
+#include "sdl.h"
 
 ///////////////////////////////
 // SDL Keyboard Button Mappings
-// Ubuntu CI platform does not use SDL keyboard input
+// macOS development platform does not use SDL keyboard input
 ///////////////////////////////
 
 #define BUTTON_UP		BUTTON_NA
@@ -53,21 +53,21 @@
 
 ///////////////////////////////
 // Evdev/Keyboard Input Codes
-// All defined for complete code coverage
+// Maps to USB HID keycodes for keyboard input
 ///////////////////////////////
 
-#define CODE_UP			CODE_NA
-#define CODE_DOWN		CODE_NA
-#define CODE_LEFT		CODE_NA
-#define CODE_RIGHT		CODE_NA
+#define CODE_UP			82  // HID Up Arrow
+#define CODE_DOWN		81  // HID Down Arrow
+#define CODE_LEFT		80  // HID Left Arrow
+#define CODE_RIGHT		79  // HID Right Arrow
 
-#define CODE_SELECT		CODE_NA
-#define CODE_START		CODE_NA
+#define CODE_SELECT		52  // HID 4
+#define CODE_START		40  // HID Enter
 
-#define CODE_A			CODE_NA
-#define CODE_B			CODE_NA
-#define CODE_X			CODE_NA
-#define CODE_Y			CODE_NA
+#define CODE_A			22  // HID S
+#define CODE_B			4   // HID A
+#define CODE_X			26  // HID W
+#define CODE_Y			20  // HID Q
 
 #define CODE_L1			CODE_NA
 #define CODE_R1			CODE_NA
@@ -76,17 +76,18 @@
 #define CODE_L3			CODE_NA
 #define CODE_R3			CODE_NA
 
-#define CODE_MENU		CODE_NA
-#define CODE_POWER		CODE_NA
+#define CODE_MENU		44  // HID Space
+#define CODE_POWER		42  // HID Backspace
+
 #define CODE_PLUS		CODE_NA
 #define CODE_MINUS		CODE_NA
 
 ///////////////////////////////
 // Joystick Button Mappings
-// All defined for complete code coverage
+// macOS development platform uses D-pad (HAT) only
 ///////////////////////////////
 
-#define JOY_UP			JOY_NA
+#define JOY_UP			JOY_NA  // D-pad handled separately
 #define JOY_DOWN		JOY_NA
 #define JOY_LEFT		JOY_NA
 #define JOY_RIGHT		JOY_NA
@@ -119,10 +120,10 @@
 #define BTN_RESUME			BTN_X       // Button to resume from save state
 #define BTN_SLEEP 			BTN_POWER   // Button to enter sleep mode
 #define BTN_WAKE 			BTN_POWER   // Button to wake from sleep
-#define BTN_MOD_VOLUME 		BTN_NONE    // Modifier for volume control
-#define BTN_MOD_BRIGHTNESS 	BTN_NONE    // Modifier for brightness control
-#define BTN_MOD_PLUS 		BTN_PLUS    // Increase button
-#define BTN_MOD_MINUS 		BTN_MINUS   // Decrease button
+#define BTN_MOD_VOLUME 		BTN_NONE    // Modifier for volume control (none - direct buttons)
+#define BTN_MOD_BRIGHTNESS 	BTN_MENU    // Hold MENU for brightness control
+#define BTN_MOD_PLUS 		BTN_PLUS    // Increase with PLUS
+#define BTN_MOD_MINUS 		BTN_MINUS   // Decrease with MINUS
 
 ///////////////////////////////
 // Display Specifications
@@ -136,6 +137,13 @@
 #define FIXED_PITCH		(FIXED_WIDTH * FIXED_BPP)  // Row stride in bytes
 #define FIXED_SIZE		(FIXED_PITCH * FIXED_HEIGHT) // Total framebuffer size
 
+// HDMI output support (currently disabled)
+// #define HAS_HDMI	1
+// #define HDMI_WIDTH 	1280
+// #define HDMI_HEIGHT 720
+// #define HDMI_PITCH 	(HDMI_WIDTH * FIXED_BPP)
+// #define HDMI_SIZE	(HDMI_PITCH * HDMI_HEIGHT)
+
 ///////////////////////////////
 // UI Layout Configuration
 ///////////////////////////////
@@ -147,22 +155,9 @@
 // Platform-Specific Paths and Settings
 ///////////////////////////////
 
-#define SDCARD_PATH "/tmp/lessui-ci"
-#define MUTE_VOLUME_RAW 0          // Standard volume scale
+#define SDCARD_PATH "../../desktop/FAKESD"
+#define MUTE_VOLUME_RAW 63         // Volume scale is inverted: 63 = mute, 0 = max volume
 
 ///////////////////////////////
-// Platform-Specific Functions (stubs for linting)
-///////////////////////////////
-
-// These are platform-specific functions that may be called
-// For CI/linting, we provide inline stubs
-
-static inline int GetHDMI(void) { return 0; }
-static inline int GetBrightness(void) { return 50; }
-static inline int GetVolume(void) { return 10; }
-static inline int GetMute(void) { return 0; }
-static inline void SetRawVolume(int val) { (void)val; }
-static inline void InitSettings(void) { }
-static inline void QuitSettings(void) { }
 
 #endif
