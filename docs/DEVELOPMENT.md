@@ -165,8 +165,7 @@ LessUI/
 │   └── <platform>/       # Platform-specific code
 │       ├── platform/     # Hardware definitions
 │       ├── keymon/       # Button monitoring daemon
-│       ├── libmsettings/ # Settings library
-│       └── cores/        # Libretro cores
+│       └── libmsettings/ # Settings library
 │
 ├── skeleton/             # Files copied to SD card
 │   ├── SYSTEM/res/       # Shared assets (fonts, sprites)
@@ -256,14 +255,16 @@ First line is summary (imperative mood). Body explains why and what changed.
 
 ### Adding a New Libretro Core
 
-1. Add core to `workspace/<platform>/cores/` as git submodule (cores are platform-specific)
-2. Add build rules to `workspace/<platform>/cores/makefile`
-3. Create emulator pak with launch script
-4. Test on target hardware
+Cores are built externally in the [minarch-cores repository](https://github.com/nchapman/minarch-cores). To add a core to LessUI:
 
-See [CORES.md](CORES.md) for details on how the core build system works.
+1. Add core to minarch-cores repository (core build system)
+2. Add core configuration to `skeleton/TEMPLATES/minarch-paks/cores.json`
+3. Create core config file `skeleton/TEMPLATES/minarch-paks/configs/<core>.cfg`
+4. Run `./scripts/generate-paks.sh all` to generate platform paks
+5. Test on target hardware
 
-Note: Some platforms share cores (e.g., my282 copies cores from rg35xx due to same CPU).
+See [CORES.md](CORES.md) for details on how cores are distributed and loaded.
+See [PAK-TEMPLATES.md](PAK-TEMPLATES.md) for pak generation system documentation.
 
 ### Fixing a Bug
 

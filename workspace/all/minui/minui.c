@@ -2172,7 +2172,7 @@ int main(int argc, char* argv[]) {
 		if (dirty) {
 			GFX_clear(screen);
 
-			int ox;
+			int ox = 0; // Initialize to avoid uninitialized warning
 			int oy;
 
 			// Thumbnail support:

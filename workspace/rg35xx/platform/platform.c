@@ -25,27 +25,27 @@
  * The display engine reads from one buffer while CPU draws to the other.
  */
 
+#include <linux/fb.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <errno.h>
 
 #include <msettings.h>
 
+#include "api.h"
 #include "defines.h"
 #include "platform.h"
-#include "api.h"
 #include "utils.h"
 
-#include "ion.h"
-#include "ion-owl.h"
 #include "de_atm7059.h"
+#include "ion-owl.h"
+#include "ion.h"
 #include "scaler.h"
 
 ///////////////////////////////
@@ -82,11 +82,11 @@ void PLAT_quitInput(void) {
  * sharing buffers between kernel drivers and userspace.
  */
 typedef struct ion_alloc_info {
-	uint32_t			size;		// Allocation size in bytes
-	struct ion_handle	*handle;	// Opaque kernel handle
-	int					fd;			// File descriptor for mmap
-	void*				padd;		// Physical address for DMA
-	void*				vadd;		// Virtual address for CPU access
+	uint32_t size; // Allocation size in bytes
+	struct ion_handle* handle; // Opaque kernel handle
+	int fd; // File descriptor for mmap
+	void* padd; // Physical address for DMA
+	void* vadd; // Virtual address for CPU access
 } ion_alloc_info_t;
 
 /**
@@ -110,34 +110,37 @@ typedef struct ion_alloc_info {
  * @note Uses PMEM heap (ION_HEAP_ID_PMEM) for physically contiguous memory
  */
 static void ion_alloc(int fd_ion, ion_alloc_info_t* info) {
-	struct ion_allocation_data	iad;
-	struct ion_fd_data		ifd;
-	struct ion_custom_data		icd;
-	struct owl_ion_phys_data 	ipd;
+	struct ion_allocation_data iad;
+	struct ion_fd_data ifd;
+	struct ion_custom_data icd;
+	struct owl_ion_phys_data ipd;
 
 	// Request allocation from ION PMEM heap
 	iad.len = info->size;
 	iad.align = sysconf(_SC_PAGESIZE); // Align to page boundary
-	iad.heap_id_mask = (1<<ION_HEAP_ID_PMEM); // Physical memory heap
+	iad.heap_id_mask = (1 << ION_HEAP_ID_PMEM); // Physical memory heap
 	iad.flags = 0;
-	if (ioctl(fd_ion, ION_IOC_ALLOC, &iad)<0) fprintf(stderr, "ION_ALLOC failed %s\n",strerror(errno));
+	if (ioctl(fd_ion, ION_IOC_ALLOC, &iad) < 0)
+		fprintf(stderr, "ION_ALLOC failed %s\n", strerror(errno));
 
 	// Get physical address (needed for Display Engine DMA registers)
 	icd.cmd = OWL_ION_GET_PHY;
 	icd.arg = (uintptr_t)&ipd;
 	ipd.handle = iad.handle;
-	if (ioctl(fd_ion, ION_IOC_CUSTOM, &icd)<0) printf("ION_GET_PHY failed %s\n",strerror(errno));
+	if (ioctl(fd_ion, ION_IOC_CUSTOM, &icd) < 0)
+		printf("ION_GET_PHY failed %s\n", strerror(errno));
 
 	// Get file descriptor for mmap
 	ifd.handle = iad.handle;
-	if (ioctl(fd_ion, ION_IOC_MAP, &ifd)<0) fprintf(stderr, "ION_MAP failed %s\n",strerror(errno));
+	if (ioctl(fd_ion, ION_IOC_MAP, &ifd) < 0)
+		fprintf(stderr, "ION_MAP failed %s\n", strerror(errno));
 
 	// Store allocation info
 	info->handle = (void*)iad.handle;
 	info->fd = ifd.fd;
 	info->padd = (void*)ipd.phys_addr; // Physical address for hardware
-	info->vadd = mmap(0, info->size, PROT_READ|PROT_WRITE, MAP_SHARED, info->fd, 0); // Virtual address for CPU
-
+	info->vadd = mmap(0, info->size, PROT_READ | PROT_WRITE, MAP_SHARED, info->fd,
+	                  0); // Virtual address for CPU
 }
 
 /**
@@ -152,11 +155,12 @@ static void ion_alloc(int fd_ion, ion_alloc_info_t* info) {
  * @param info Allocation info from ion_alloc()
  */
 static void ion_free(int fd_ion, ion_alloc_info_t* info) {
-	struct ion_handle_data	ihd;
+	struct ion_handle_data ihd;
 	munmap(info->vadd, info->size);
 	close(info->fd);
 	ihd.handle = (uintptr_t)info->handle;
-	if (ioctl(fd_ion, ION_IOC_FREE, &ihd)<0) fprintf(stderr, "ION_FREE failed %s\n",strerror(errno));
+	if (ioctl(fd_ion, ION_IOC_FREE, &ihd) < 0)
+		fprintf(stderr, "ION_FREE failed %s\n", strerror(errno));
 	fflush(stdout);
 }
 
@@ -170,8 +174,8 @@ static void ion_free(int fd_ion, ion_alloc_info_t* info) {
  * The Display Engine is memory-mapped at a fixed physical address.
  * Access is via /dev/mem to directly manipulate hardware registers.
  */
-#define	DE		(0xB02E0000)	// Display Engine base address
-#define	DE_SIZE	(0x00002000)	// 8KB register space
+#define DE (0xB02E0000) // Display Engine base address
+#define DE_SIZE (0x00002000) // 8KB register space
 
 /**
  * Overlay enable state (toggled by PLAT_enableOverlay).
@@ -187,11 +191,11 @@ static int de_enable_overlay = 0;
  * define how adjacent pixels are blended during scaling.
  */
 enum {
-	DE_SCOEF_NONE,				// Nearest-neighbor (sharp, no filtering)
-	DE_SCOEF_CRISPY,			// Minimal filtering for upscaling
-	DE_SCOEF_ZOOMIN,			// Bilinear for smooth upscaling
-	DE_SCOEF_HALF_ZOOMOUT,		// Balanced downscaling
-	DE_SCOEF_SMALLER_ZOOMOUT,	// Aggressive downscaling filter
+	DE_SCOEF_NONE, // Nearest-neighbor (sharp, no filtering)
+	DE_SCOEF_CRISPY, // Minimal filtering for upscaling
+	DE_SCOEF_ZOOMIN, // Bilinear for smooth upscaling
+	DE_SCOEF_HALF_ZOOMOUT, // Balanced downscaling
+	DE_SCOEF_SMALLER_ZOOMOUT, // Aggressive downscaling filter
 	DE_SCOEF_MAX
 };
 
@@ -225,59 +229,59 @@ enum {
  * @note HALF_ZOOMOUT provides balanced bilinear filtering for most scaling
  */
 static void DE_setScaleCoef(uint32_t* de_mem, int plane, int scale) {
-	switch(scale) {
-		case DE_SCOEF_NONE:	// Nearest-neighbor (no interpolation)
-			de_mem[DE_OVL_SCOEF0(plane)/4]= 0x00400000; // L 100%  R 0%
-			de_mem[DE_OVL_SCOEF1(plane)/4]= 0x00400000; // L 87.5% R 12.5% (disabled, use 100% L)
-			de_mem[DE_OVL_SCOEF2(plane)/4]= 0x00400000; // L 75%   R 25%   (disabled, use 100% L)
-			de_mem[DE_OVL_SCOEF3(plane)/4]= 0x00400000; // L 62.5% R 37.5% (disabled, use 100% L)
-			de_mem[DE_OVL_SCOEF4(plane)/4]= 0x00004000; // L 50%   R 50%
-			de_mem[DE_OVL_SCOEF5(plane)/4]= 0x00004000; // L 37.5% R 62.5%
-			de_mem[DE_OVL_SCOEF6(plane)/4]= 0x00004000; // L 25%   R 75%
-			de_mem[DE_OVL_SCOEF7(plane)/4]= 0x00004000; // L 12.5% R 87.5%
-			break;
-		case DE_SCOEF_CRISPY:	// Minimal filtering for sharp upscaling
-			de_mem[DE_OVL_SCOEF0(plane)/4]= 0x00400000;
-			de_mem[DE_OVL_SCOEF1(plane)/4]= 0x00400000;
-			de_mem[DE_OVL_SCOEF2(plane)/4]= 0x00400000;
-			de_mem[DE_OVL_SCOEF3(plane)/4]= 0x00400000;
-			de_mem[DE_OVL_SCOEF4(plane)/4]= 0x00202000; // 50/50 blend at midpoint
-			de_mem[DE_OVL_SCOEF5(plane)/4]= 0x00004000;
-			de_mem[DE_OVL_SCOEF6(plane)/4]= 0x00004000;
-			de_mem[DE_OVL_SCOEF7(plane)/4]= 0x00004000;
-			break;
-		case DE_SCOEF_ZOOMIN:	// Full bilinear filtering for smooth upscaling
-			de_mem[DE_OVL_SCOEF0(plane)/4]= 0x00400000;
-			de_mem[DE_OVL_SCOEF1(plane)/4]= 0xFC3E07FF;
-			de_mem[DE_OVL_SCOEF2(plane)/4]= 0xFA3810FE;
-			de_mem[DE_OVL_SCOEF3(plane)/4]= 0xF9301BFC;
-			de_mem[DE_OVL_SCOEF4(plane)/4]= 0xFA2626FA;
-			de_mem[DE_OVL_SCOEF5(plane)/4]= 0xFC1B30F9;
-			de_mem[DE_OVL_SCOEF6(plane)/4]= 0xFE1038FA;
-			de_mem[DE_OVL_SCOEF7(plane)/4]= 0xFF073EFC;
-			break;
-		case DE_SCOEF_HALF_ZOOMOUT:	// Balanced bilinear for downscaling
-			de_mem[DE_OVL_SCOEF0(plane)/4]= 0x00400000;
-			de_mem[DE_OVL_SCOEF1(plane)/4]= 0x00380800;
-			de_mem[DE_OVL_SCOEF2(plane)/4]= 0x00301000;
-			de_mem[DE_OVL_SCOEF3(plane)/4]= 0x00281800;
-			de_mem[DE_OVL_SCOEF4(plane)/4]= 0x00202000;
-			de_mem[DE_OVL_SCOEF5(plane)/4]= 0x00182800;
-			de_mem[DE_OVL_SCOEF6(plane)/4]= 0x00103000;
-			de_mem[DE_OVL_SCOEF7(plane)/4]= 0x00083800;
-			break;
-		case DE_SCOEF_SMALLER_ZOOMOUT:	// Aggressive filtering for large downscaling
-			de_mem[DE_OVL_SCOEF0(plane)/4]= 0x10201000;
-			de_mem[DE_OVL_SCOEF1(plane)/4]= 0x0E1E1202;
-			de_mem[DE_OVL_SCOEF2(plane)/4]= 0x0C1C1404;
-			de_mem[DE_OVL_SCOEF3(plane)/4]= 0x0A1A1606;
-			de_mem[DE_OVL_SCOEF4(plane)/4]= 0x08181808;
-			de_mem[DE_OVL_SCOEF5(plane)/4]= 0x06161A0A;
-			de_mem[DE_OVL_SCOEF6(plane)/4]= 0x04141C0C;
-			de_mem[DE_OVL_SCOEF7(plane)/4]= 0x02121E0E;
-			break;
-		default:
-			break;
+	switch (scale) {
+	case DE_SCOEF_NONE: // Nearest-neighbor (no interpolation)
+		de_mem[DE_OVL_SCOEF0(plane) / 4] = 0x00400000; // L 100%  R 0%
+		de_mem[DE_OVL_SCOEF1(plane) / 4] = 0x00400000; // L 87.5% R 12.5% (disabled, use 100% L)
+		de_mem[DE_OVL_SCOEF2(plane) / 4] = 0x00400000; // L 75%   R 25%   (disabled, use 100% L)
+		de_mem[DE_OVL_SCOEF3(plane) / 4] = 0x00400000; // L 62.5% R 37.5% (disabled, use 100% L)
+		de_mem[DE_OVL_SCOEF4(plane) / 4] = 0x00004000; // L 50%   R 50%
+		de_mem[DE_OVL_SCOEF5(plane) / 4] = 0x00004000; // L 37.5% R 62.5%
+		de_mem[DE_OVL_SCOEF6(plane) / 4] = 0x00004000; // L 25%   R 75%
+		de_mem[DE_OVL_SCOEF7(plane) / 4] = 0x00004000; // L 12.5% R 87.5%
+		break;
+	case DE_SCOEF_CRISPY: // Minimal filtering for sharp upscaling
+		de_mem[DE_OVL_SCOEF0(plane) / 4] = 0x00400000;
+		de_mem[DE_OVL_SCOEF1(plane) / 4] = 0x00400000;
+		de_mem[DE_OVL_SCOEF2(plane) / 4] = 0x00400000;
+		de_mem[DE_OVL_SCOEF3(plane) / 4] = 0x00400000;
+		de_mem[DE_OVL_SCOEF4(plane) / 4] = 0x00202000; // 50/50 blend at midpoint
+		de_mem[DE_OVL_SCOEF5(plane) / 4] = 0x00004000;
+		de_mem[DE_OVL_SCOEF6(plane) / 4] = 0x00004000;
+		de_mem[DE_OVL_SCOEF7(plane) / 4] = 0x00004000;
+		break;
+	case DE_SCOEF_ZOOMIN: // Full bilinear filtering for smooth upscaling
+		de_mem[DE_OVL_SCOEF0(plane) / 4] = 0x00400000;
+		de_mem[DE_OVL_SCOEF1(plane) / 4] = 0xFC3E07FF;
+		de_mem[DE_OVL_SCOEF2(plane) / 4] = 0xFA3810FE;
+		de_mem[DE_OVL_SCOEF3(plane) / 4] = 0xF9301BFC;
+		de_mem[DE_OVL_SCOEF4(plane) / 4] = 0xFA2626FA;
+		de_mem[DE_OVL_SCOEF5(plane) / 4] = 0xFC1B30F9;
+		de_mem[DE_OVL_SCOEF6(plane) / 4] = 0xFE1038FA;
+		de_mem[DE_OVL_SCOEF7(plane) / 4] = 0xFF073EFC;
+		break;
+	case DE_SCOEF_HALF_ZOOMOUT: // Balanced bilinear for downscaling
+		de_mem[DE_OVL_SCOEF0(plane) / 4] = 0x00400000;
+		de_mem[DE_OVL_SCOEF1(plane) / 4] = 0x00380800;
+		de_mem[DE_OVL_SCOEF2(plane) / 4] = 0x00301000;
+		de_mem[DE_OVL_SCOEF3(plane) / 4] = 0x00281800;
+		de_mem[DE_OVL_SCOEF4(plane) / 4] = 0x00202000;
+		de_mem[DE_OVL_SCOEF5(plane) / 4] = 0x00182800;
+		de_mem[DE_OVL_SCOEF6(plane) / 4] = 0x00103000;
+		de_mem[DE_OVL_SCOEF7(plane) / 4] = 0x00083800;
+		break;
+	case DE_SCOEF_SMALLER_ZOOMOUT: // Aggressive filtering for large downscaling
+		de_mem[DE_OVL_SCOEF0(plane) / 4] = 0x10201000;
+		de_mem[DE_OVL_SCOEF1(plane) / 4] = 0x0E1E1202;
+		de_mem[DE_OVL_SCOEF2(plane) / 4] = 0x0C1C1404;
+		de_mem[DE_OVL_SCOEF3(plane) / 4] = 0x0A1A1606;
+		de_mem[DE_OVL_SCOEF4(plane) / 4] = 0x08181808;
+		de_mem[DE_OVL_SCOEF5(plane) / 4] = 0x06161A0A;
+		de_mem[DE_OVL_SCOEF6(plane) / 4] = 0x04141C0C;
+		de_mem[DE_OVL_SCOEF7(plane) / 4] = 0x02121E0E;
+		break;
+	default:
+		break;
 	}
 }
 
@@ -295,7 +299,8 @@ static void DE_setScaleCoef(uint32_t* de_mem, int plane, int scale) {
  * @note 0x30100000 = only main plane enabled
  */
 static void DE_enableLayer(uint32_t* de_mem) {
-	de_mem[DE_PATH_CTL(0)/4] = (de_enable_overlay?0x30300000:0x30100000) | (de_mem[DE_PATH_CTL(0)/4] & 0xCF0FFFFF);
+	de_mem[DE_PATH_CTL(0) / 4] =
+	    (de_enable_overlay ? 0x30300000 : 0x30100000) | (de_mem[DE_PATH_CTL(0) / 4] & 0xCF0FFFFF);
 }
 
 /**
@@ -322,14 +327,15 @@ static void DE_enableLayer(uint32_t* de_mem) {
  */
 static void DE_setRect(uint32_t* de_mem, int x, int y, int w, int h) {
 	// Set output size (0-based: width-1, height-1)
-	de_mem[(DE_OVL_OSIZE(0))/4] = ((w-1)&0xFFFF) | ((h-1)<<16);
+	de_mem[(DE_OVL_OSIZE(0)) / 4] = ((w - 1) & 0xFFFF) | ((h - 1) << 16);
 
 	// Calculate and set scaling ratio (0x2000 = 1.0x scale)
-	de_mem[(DE_OVL_SR(0))/4] = ((0x2000*((de_mem[(DE_OVL_ISIZE(0))/4]&0xFFFF)+1)/w)&0xFFFF) |
-						((0x2000*((de_mem[(DE_OVL_ISIZE(0))/4]>>16)+1)/h)<<16);
+	de_mem[(DE_OVL_SR(0)) / 4] =
+	    ((0x2000 * ((de_mem[(DE_OVL_ISIZE(0)) / 4] & 0xFFFF) + 1) / w) & 0xFFFF) |
+	    ((0x2000 * ((de_mem[(DE_OVL_ISIZE(0)) / 4] >> 16) + 1) / h) << 16);
 
 	// Set output position on screen
-	de_mem[(DE_OVL_COOR(0,0))/4] = (y<<16) | (x&0xFFFF);
+	de_mem[(DE_OVL_COOR(0, 0)) / 4] = (y << 16) | (x & 0xFFFF);
 }
 
 ///////////////////////////////
@@ -349,18 +355,18 @@ static void DE_setRect(uint32_t* de_mem, int x, int y, int w, int h) {
  * Display device information structure.
  * Used with OWLFB_GET_DISPLAY_INFO/OWLFB_SET_DISPLAY_INFO ioctls.
  */
-struct owlfb_disp_device{
-    __u32 mType;
-    __u32 mState;
-    __u32 mPluginState;
-    __u32 mWidth;
-    __u32 mHeight;
-    __u32 mRefreshRate;
-    __u32 mWidthScale;
-    __u32 mHeightScale;
-    __u32 mCmdMode;
-    __u32 mIcType;
-    __u32 mPrivateInfo[MAX_PRIVATE_DATA_SIZE];
+struct owlfb_disp_device {
+	__u32 mType;
+	__u32 mState;
+	__u32 mPluginState;
+	__u32 mWidth;
+	__u32 mHeight;
+	__u32 mRefreshRate;
+	__u32 mWidthScale;
+	__u32 mHeightScale;
+	__u32 mCmdMode;
+	__u32 mIcType;
+	__u32 mPrivateInfo[MAX_PRIVATE_DATA_SIZE];
 };
 
 /**
@@ -368,7 +374,7 @@ struct owlfb_disp_device{
  */
 struct display_private_info {
 	int LCD_TYPE;
-	int	LCD_LIGHTENESS;
+	int LCD_LIGHTENESS;
 	int LCD_SATURATION;
 	int LCD_CONSTRAST;
 };
@@ -377,9 +383,9 @@ struct display_private_info {
  * Display adjustment commands.
  */
 enum CmdMode {
-    SET_LIGHTENESS = 0,
-    SET_SATURATION = 1,
-    SET_CONSTRAST = 2,
+	SET_LIGHTENESS = 0,
+	SET_SATURATION = 1,
+	SET_CONSTRAST = 2,
 	SET_DEFAULT = 3,
 };
 
@@ -397,8 +403,8 @@ struct owlfb_sync_info {
  * Hardware overlay types.
  */
 enum owlfb_overlay_type {
-	OWLFB_OVERLAY_VIDEO = 1,	// Video overlay (used for battery indicator)
-	OWLFB_OVERLAY_CURSOR,		// Cursor overlay
+	OWLFB_OVERLAY_VIDEO = 1, // Video overlay (used for battery indicator)
+	OWLFB_OVERLAY_CURSOR, // Cursor overlay
 };
 
 /**
@@ -408,25 +414,25 @@ enum owlfb_overlay_type {
  * MinUI uses ARGB32 for overlay (battery indicator with alpha blending).
  */
 enum owl_color_mode {
-	OWL_DSS_COLOR_RGB16	= 0,
-	OWL_DSS_COLOR_BGR16	= 1,
-	OWL_DSS_COLOR_ARGB32    = 4,	// Used for overlay
-	OWL_DSS_COLOR_ABGR32    = 5,
-	OWL_DSS_COLOR_RGBA32    = 6,
-	OWL_DSS_COLOR_BGRA32	= 7,
-	OWL_DSS_COLOR_NV21	= 8,
-	OWL_DSS_COLOR_NU21	= 9,
-	OWL_DSS_COLOR_YU12	= 10,
-	OWL_DSS_COLOR_ARGB16	= 12,
-	OWL_DSS_COLOR_ABGR16	= 13,
-	OWL_DSS_COLOR_RGBA16	= 14,
-	OWL_DSS_COLOR_BGRA16	= 15,
-	OWL_DSS_COLOR_RGB24U	= 16,
-	OWL_DSS_COLOR_RGB24P	= 17,
-	OWL_DSS_COLOR_RGBX32	= 18,
-	OWL_DSS_COLOR_NV12	= 19,
-	OWL_DSS_COLOR_XBGR32	= 20,
-	OWL_DSS_COLOR_XRGB32	= 21,
+	OWL_DSS_COLOR_RGB16 = 0,
+	OWL_DSS_COLOR_BGR16 = 1,
+	OWL_DSS_COLOR_ARGB32 = 4, // Used for overlay
+	OWL_DSS_COLOR_ABGR32 = 5,
+	OWL_DSS_COLOR_RGBA32 = 6,
+	OWL_DSS_COLOR_BGRA32 = 7,
+	OWL_DSS_COLOR_NV21 = 8,
+	OWL_DSS_COLOR_NU21 = 9,
+	OWL_DSS_COLOR_YU12 = 10,
+	OWL_DSS_COLOR_ARGB16 = 12,
+	OWL_DSS_COLOR_ABGR16 = 13,
+	OWL_DSS_COLOR_RGBA16 = 14,
+	OWL_DSS_COLOR_BGRA16 = 15,
+	OWL_DSS_COLOR_RGB24U = 16,
+	OWL_DSS_COLOR_RGB24P = 17,
+	OWL_DSS_COLOR_RGBX32 = 18,
+	OWL_DSS_COLOR_NV12 = 19,
+	OWL_DSS_COLOR_XBGR32 = 20,
+	OWL_DSS_COLOR_XRGB32 = 21,
 };
 
 /**
@@ -439,7 +445,7 @@ struct owlfb_overlay_args {
 	__u16 overlay_type;
 	__u32 overlay_mem_base;
 	__u32 overlay_mem_size;
-	__u32 uintptr_overly_info;	// Pointer to owlfb_overlay_info
+	__u32 uintptr_overly_info; // Pointer to owlfb_overlay_info
 };
 
 /**
@@ -449,45 +455,45 @@ struct owlfb_overlay_args {
  * Passed via owlfb_overlay_args.uintptr_overly_info.
  */
 struct owlfb_overlay_info {
-	__u32 mem_off;				// Memory offset from framebuffer base
-	__u32 mem_size;				// Buffer size
-	__u32 screen_width;			// Screen width (pitch)
+	__u32 mem_off; // Memory offset from framebuffer base
+	__u32 mem_size; // Buffer size
+	__u32 screen_width; // Screen width (pitch)
 	enum owl_color_mode color_mode;
-	__u32 img_width;			// Input image width
-	__u32 img_height;			// Input image height
-	__u32 xoff;					// Crop X offset
-	__u32 yoff;					// Crop Y offset
-	__u32 width;				// Crop width
-	__u32 height;				// Crop height
-	__u8 rotation;				// Rotation angle
-	__u32 pos_x;				// Screen X position
-	__u32 pos_y;				// Screen Y position
-	__u32 out_width;			// Output width (after scaling)
-	__u32 out_height;			// Output height (after scaling)
-	__u8 lightness;				// Brightness adjustment
-	__u8 saturation;			// Saturation adjustment
-	__u8 contrast;				// Contrast adjustment
-	bool global_alpha_en;		// Enable global alpha blending
-	__u8 global_alpha;			// Global alpha value (0-255)
-	bool pre_mult_alpha_en;		// Pre-multiplied alpha mode
-	__u8 zorder;				// Layer priority (higher = on top)
+	__u32 img_width; // Input image width
+	__u32 img_height; // Input image height
+	__u32 xoff; // Crop X offset
+	__u32 yoff; // Crop Y offset
+	__u32 width; // Crop width
+	__u32 height; // Crop height
+	__u8 rotation; // Rotation angle
+	__u32 pos_x; // Screen X position
+	__u32 pos_y; // Screen Y position
+	__u32 out_width; // Output width (after scaling)
+	__u32 out_height; // Output height (after scaling)
+	__u8 lightness; // Brightness adjustment
+	__u8 saturation; // Saturation adjustment
+	__u8 contrast; // Contrast adjustment
+	bool global_alpha_en; // Enable global alpha blending
+	__u8 global_alpha; // Global alpha value (0-255)
+	bool pre_mult_alpha_en; // Pre-multiplied alpha mode
+	__u8 zorder; // Layer priority (higher = on top)
 };
 
 /**
  * OWL framebuffer IOCTL commands.
  */
 #define OWL_IOW(num, dtype) _IOW('O', num, dtype)
-#define OWL_IOR(num, dtype)	_IOR('O', num, dtype)
-#define OWLFB_WAITFORVSYNC      OWL_IOW(57, long long)
-#define OWLFB_GET_DISPLAY_INFO	OWL_IOW(74, struct owlfb_disp_device)
-#define OWLFB_SET_DISPLAY_INFO	OWL_IOW(75, struct owlfb_disp_device)
-#define OWLFB_VSYNC_EVENT_EN	OWL_IOW(67, struct owlfb_sync_info)
-#define OWLFB_OVERLAY_REQUEST	OWL_IOR(41, struct owlfb_overlay_args)
-#define OWLFB_OVERLAY_RELEASE	OWL_IOR(42, struct owlfb_overlay_args)
-#define OWLFB_OVERLAY_ENABLE	OWL_IOR(43, struct owlfb_overlay_args)
-#define OWLFB_OVERLAY_DISABLE	OWL_IOR(45, struct owlfb_overlay_args)
-#define OWLFB_OVERLAY_GETINFO	OWL_IOW(46, struct owlfb_overlay_args)
-#define OWLFB_OVERLAY_SETINFO   OWL_IOW(47, struct owlfb_overlay_args)
+#define OWL_IOR(num, dtype) _IOR('O', num, dtype)
+#define OWLFB_WAITFORVSYNC OWL_IOW(57, long long)
+#define OWLFB_GET_DISPLAY_INFO OWL_IOW(74, struct owlfb_disp_device)
+#define OWLFB_SET_DISPLAY_INFO OWL_IOW(75, struct owlfb_disp_device)
+#define OWLFB_VSYNC_EVENT_EN OWL_IOW(67, struct owlfb_sync_info)
+#define OWLFB_OVERLAY_REQUEST OWL_IOR(41, struct owlfb_overlay_args)
+#define OWLFB_OVERLAY_RELEASE OWL_IOR(42, struct owlfb_overlay_args)
+#define OWLFB_OVERLAY_ENABLE OWL_IOR(43, struct owlfb_overlay_args)
+#define OWLFB_OVERLAY_DISABLE OWL_IOR(45, struct owlfb_overlay_args)
+#define OWLFB_OVERLAY_GETINFO OWL_IOW(46, struct owlfb_overlay_args)
+#define OWLFB_OVERLAY_SETINFO OWL_IOW(47, struct owlfb_overlay_args)
 
 ///////////////////////////////
 // Video Context and Initialization
@@ -500,26 +506,26 @@ struct owlfb_overlay_info {
  * Display Engine access, and double-buffering state.
  */
 static struct VID_Context {
-	SDL_Surface* screen;	// SDL surface wrapping current backbuffer
+	SDL_Surface* screen; // SDL surface wrapping current backbuffer
 
-	int fd_fb;				// File descriptor for /dev/fb0
-	int fd_ion;				// File descriptor for /dev/ion
-	int fd_mem;				// File descriptor for /dev/mem (Display Engine access)
+	int fd_fb; // File descriptor for /dev/fb0
+	int fd_ion; // File descriptor for /dev/ion
+	int fd_mem; // File descriptor for /dev/mem (Display Engine access)
 
-	uint32_t* de_mem;		// Memory-mapped Display Engine registers
+	uint32_t* de_mem; // Memory-mapped Display Engine registers
 
-	struct fb_fix_screeninfo finfo;	// Fixed framebuffer info
-	struct fb_var_screeninfo vinfo;	// Variable framebuffer info
-	ion_alloc_info_t fb_info;		// ION allocation for double-buffered framebuffer
+	struct fb_fix_screeninfo finfo; // Fixed framebuffer info
+	struct fb_var_screeninfo vinfo; // Variable framebuffer info
+	ion_alloc_info_t fb_info; // ION allocation for double-buffered framebuffer
 
-	int page;				// Current page (0 or 1) for double buffering
-	int width;				// Current framebuffer width
-	int height;				// Current framebuffer height
-	int pitch;				// Current framebuffer pitch (bytes per line)
-	int cleared;			// Deferred clear flag
+	int page; // Current page (0 or 1) for double buffering
+	int width; // Current framebuffer width
+	int height; // Current framebuffer height
+	int pitch; // Current framebuffer pitch (bytes per line)
+	int cleared; // Deferred clear flag
 } vid;
 
-static int _;	// Unused variable for ioctl calls that require a pointer
+static int _; // Unused variable for ioctl calls that require a pointer
 
 /**
  * Initializes video subsystem.
@@ -545,13 +551,13 @@ SDL_Surface* PLAT_initVideo(void) {
 	// Initialize SDL (for input, not video output)
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_ShowCursor(0);
-	SDL_SetVideoMode(0,0,FIXED_DEPTH,0);
+	SDL_SetVideoMode(0, 0, FIXED_DEPTH, 0);
 
 	// Open hardware devices
 	vid.fd_fb = open("/dev/fb0", O_RDWR);
 	vid.fd_ion = open("/dev/ion", O_RDWR);
 	vid.fd_mem = open("/dev/mem", O_RDWR);
-	vid.de_mem = mmap(0, DE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, vid.fd_mem, DE);
+	vid.de_mem = mmap(0, DE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, vid.fd_mem, DE);
 
 	// Get framebuffer info
 	ioctl(vid.fd_fb, FBIOGET_FSCREENINFO, &vid.finfo);
@@ -561,10 +567,11 @@ SDL_Surface* PLAT_initVideo(void) {
 	struct owlfb_sync_info sinfo;
 	sinfo.enabled = 1;
 	sinfo.disp_id = 2;
-	if (ioctl(vid.fd_fb, OWLFB_VSYNC_EVENT_EN, &sinfo)<0) fprintf(stderr, "VSYNC_EVENT_EN failed %s\n",strerror(errno));
+	if (ioctl(vid.fd_fb, OWLFB_VSYNC_EVENT_EN, &sinfo) < 0)
+		fprintf(stderr, "VSYNC_EVENT_EN failed %s\n", strerror(errno));
 
 	// Setup double buffering state
-	vid.page = 1;	// Start with page 1 (page 0 is frontbuffer)
+	vid.page = 1; // Start with page 1 (page 0 is frontbuffer)
 	vid.width = FIXED_WIDTH;
 	vid.height = FIXED_HEIGHT;
 	vid.pitch = FIXED_PITCH;
@@ -574,18 +581,23 @@ SDL_Surface* PLAT_initVideo(void) {
 	ion_alloc(vid.fd_ion, &vid.fb_info);
 
 	// Create SDL surface wrapping page 1
-	vid.screen = SDL_CreateRGBSurfaceFrom(vid.fb_info.vadd+PAGE_SIZE, vid.width,vid.height,FIXED_DEPTH,vid.pitch, RGBA_MASK_AUTO);
+	vid.screen = SDL_CreateRGBSurfaceFrom(vid.fb_info.vadd + PAGE_SIZE, vid.width, vid.height,
+	                                      FIXED_DEPTH, vid.pitch, RGBA_MASK_AUTO);
 	memset(vid.screen->pixels, 0, vid.pitch * vid.height);
 
 	// Get viewport size from Display Engine
-	int vw = (vid.de_mem[DE_PATH_SIZE(0)/4]&0xFFFF)+1;
-	int vh = (vid.de_mem[DE_PATH_SIZE(0)/4]>>16)+1;
+	int vw = (vid.de_mem[DE_PATH_SIZE(0) / 4] & 0xFFFF) + 1;
+	int vh = (vid.de_mem[DE_PATH_SIZE(0) / 4] >> 16) + 1;
 
 	// Configure Display Engine registers for both main plane (0) and overlay plane (2)
-	vid.de_mem[DE_OVL_ISIZE(0)/4] = vid.de_mem[DE_OVL_ISIZE(2)/4] = ((vid.width-1) & 0xFFFF) | ((vid.height-1) << 16);
-	vid.de_mem[DE_OVL_SR(0)/4] = vid.de_mem[DE_OVL_SR(2)/4] = ((0x2000*vid.width/vw)&0xFFFF) | ((0x2000*vid.height/vh)<<16);
-	vid.de_mem[DE_OVL_STR(0)/4] = vid.de_mem[DE_OVL_STR(2)/4] = vid.pitch / 8;	// Stride in 64-bit words
-	vid.de_mem[DE_OVL_BA0(0)/4] = (uintptr_t)(vid.fb_info.padd + PAGE_SIZE);	// Physical address of page 1
+	vid.de_mem[DE_OVL_ISIZE(0) / 4] = vid.de_mem[DE_OVL_ISIZE(2) / 4] =
+	    ((vid.width - 1) & 0xFFFF) | ((vid.height - 1) << 16);
+	vid.de_mem[DE_OVL_SR(0) / 4] = vid.de_mem[DE_OVL_SR(2) / 4] =
+	    ((0x2000 * vid.width / vw) & 0xFFFF) | ((0x2000 * vid.height / vh) << 16);
+	vid.de_mem[DE_OVL_STR(0) / 4] = vid.de_mem[DE_OVL_STR(2) / 4] =
+	    vid.pitch / 8; // Stride in 64-bit words
+	vid.de_mem[DE_OVL_BA0(0) / 4] =
+	    (uintptr_t)(vid.fb_info.padd + PAGE_SIZE); // Physical address of page 1
 
 	// Enable bilinear filtering by default
 	GFX_setNearestNeighbor(0);
@@ -632,8 +644,8 @@ void PLAT_clearVideo(SDL_Surface* screen) {
  * @note Prevents brief flash of old content when clearing during display
  */
 void PLAT_clearAll(void) {
-	PLAT_clearVideo(vid.screen);	// Clear backbuffer immediately
-	vid.cleared = 1;				// Defer clearing frontbuffer until offscreen
+	PLAT_clearVideo(vid.screen); // Clear backbuffer immediately
+	vid.cleared = 1; // Defer clearing frontbuffer until offscreen
 }
 
 /**
@@ -668,18 +680,21 @@ SDL_Surface* PLAT_resizeVideo(int w, int h, int pitch) {
 
 	// Recreate SDL surface with new dimensions
 	SDL_FreeSurface(vid.screen);
-	vid.screen = SDL_CreateRGBSurfaceFrom(vid.fb_info.vadd + vid.page*PAGE_SIZE, vid.width,vid.height,FIXED_DEPTH,vid.pitch, RGBA_MASK_AUTO);
+	vid.screen = SDL_CreateRGBSurfaceFrom(vid.fb_info.vadd + vid.page * PAGE_SIZE, vid.width,
+	                                      vid.height, FIXED_DEPTH, vid.pitch, RGBA_MASK_AUTO);
 	memset(vid.screen->pixels, 0, vid.pitch * vid.height);
 
 	// Get viewport size from Display Engine
-	int vw = (vid.de_mem[DE_PATH_SIZE(0)/4]&0xFFFF)+1;
-	int vh = (vid.de_mem[DE_PATH_SIZE(0)/4]>>16)+1;
+	int vw = (vid.de_mem[DE_PATH_SIZE(0) / 4] & 0xFFFF) + 1;
+	int vh = (vid.de_mem[DE_PATH_SIZE(0) / 4] >> 16) + 1;
 
 	// Update Display Engine registers for new resolution
-	vid.de_mem[DE_OVL_ISIZE(0)/4] = vid.de_mem[DE_OVL_ISIZE(2)/4] = ((vid.width-1) & 0xFFFF) | ((vid.height-1) << 16);
-	vid.de_mem[DE_OVL_SR(0)/4] = vid.de_mem[DE_OVL_SR(2)/4] = ((0x2000*vid.width/vw)&0xFFFF) | ((0x2000*vid.height/vh)<<16);
-	vid.de_mem[DE_OVL_STR(0)/4] = vid.de_mem[DE_OVL_STR(2)/4] = vid.pitch / 8;
-	vid.de_mem[DE_OVL_BA0(0)/4] = (uintptr_t)(vid.fb_info.padd + vid.page * PAGE_SIZE);
+	vid.de_mem[DE_OVL_ISIZE(0) / 4] = vid.de_mem[DE_OVL_ISIZE(2) / 4] =
+	    ((vid.width - 1) & 0xFFFF) | ((vid.height - 1) << 16);
+	vid.de_mem[DE_OVL_SR(0) / 4] = vid.de_mem[DE_OVL_SR(2) / 4] =
+	    ((0x2000 * vid.width / vw) & 0xFFFF) | ((0x2000 * vid.height / vh) << 16);
+	vid.de_mem[DE_OVL_STR(0) / 4] = vid.de_mem[DE_OVL_STR(2) / 4] = vid.pitch / 8;
+	vid.de_mem[DE_OVL_BA0(0) / 4] = (uintptr_t)(vid.fb_info.padd + vid.page * PAGE_SIZE);
 
 	return vid.screen;
 }
@@ -696,7 +711,7 @@ SDL_Surface* PLAT_resizeVideo(int w, int h, int pitch) {
  * @param height Output height
  */
 void PLAT_setVideoScaleClip(int x, int y, int width, int height) {
-	DE_setRect(vid.de_mem, x,y,width,height);
+	DE_setRect(vid.de_mem, x, y, width, height);
 }
 
 /**
@@ -724,8 +739,8 @@ void PLAT_setNearestNeighbor(int enabled) {
  * MinUI supports optional scanline/grid effects for retro aesthetics.
  * These are implemented via CPU-based scalers rather than hardware.
  */
-static int next_effect = EFFECT_NONE;		// Effect requested for next frame
-static int effect_type = EFFECT_NONE;		// Currently active effect
+static int next_effect = EFFECT_NONE; // Effect requested for next frame
+static int effect_type = EFFECT_NONE; // Currently active effect
 
 /**
  * Resets scaling sharpness.
@@ -739,7 +754,8 @@ static int effect_type = EFFECT_NONE;		// Currently active effect
  */
 void PLAT_setSharpness(int sharpness) {
 	// Force effect to reload on next frame
-	if (effect_type>=EFFECT_NONE) next_effect = effect_type;
+	if (effect_type >= EFFECT_NONE)
+		next_effect = effect_type;
 	effect_type = -1;
 }
 
@@ -766,7 +782,8 @@ void PLAT_setEffect(int effect) {
  * @note Uses OWLFB_WAITFORVSYNC ioctl to the framebuffer driver
  */
 void PLAT_vsync(int remaining) {
-	if (ioctl(vid.fd_fb, OWLFB_WAITFORVSYNC, &_)) LOG_info("OWLFB_WAITFORVSYNC failed %s\n", strerror(errno));
+	if (ioctl(vid.fd_fb, OWLFB_WAITFORVSYNC, &_))
+		LOG_info("OWLFB_WAITFORVSYNC failed %s\n", strerror(errno));
 }
 
 /**
@@ -785,29 +802,40 @@ void PLAT_vsync(int remaining) {
  * @note All scalers are NEON-optimized (_n16 suffix = RGB565)
  */
 scaler_t PLAT_getScaler(GFX_Renderer* renderer) {
-	if (effect_type==EFFECT_LINE) {
+	if (effect_type == EFFECT_LINE) {
 		switch (renderer->scale) {
-			case 4:  return scale4x_line;
-			case 3:  return scale3x_line;
-			case 2:  return scale2x_line;
-			default: return scale1x_line;
+		case 4:
+			return scale4x_line;
+		case 3:
+			return scale3x_line;
+		case 2:
+			return scale2x_line;
+		default:
+			return scale1x_line;
 		}
-	}
-	else if (effect_type==EFFECT_GRID) {
+	} else if (effect_type == EFFECT_GRID) {
 		switch (renderer->scale) {
-			case 3:  return scale3x_grid;
-			case 2:  return scale2x_grid;
+		case 3:
+			return scale3x_grid;
+		case 2:
+			return scale2x_grid;
 		}
 	}
 
 	// Standard scaling (no effect)
 	switch (renderer->scale) {
-		case 6:  return scale6x6_n16;
-		case 5:  return scale5x5_n16;
-		case 4:  return scale4x4_n16;
-		case 3:  return scale3x3_n16;
-		case 2:  return scale2x2_n16;
-		default: return scale1x1_n16;
+	case 6:
+		return scale6x6_n16;
+	case 5:
+		return scale5x5_n16;
+	case 4:
+		return scale4x4_n16;
+	case 3:
+		return scale3x3_n16;
+	case 2:
+		return scale2x2_n16;
+	default:
+		return scale1x1_n16;
 	}
 }
 
@@ -825,7 +853,7 @@ scaler_t PLAT_getScaler(GFX_Renderer* renderer) {
  */
 void PLAT_blitRenderer(GFX_Renderer* renderer) {
 	// Update scaler if effect changed
-	if (effect_type!=next_effect) {
+	if (effect_type != next_effect) {
 		effect_type = next_effect;
 		renderer->blit = PLAT_getScaler(renderer);
 	}
@@ -834,7 +862,8 @@ void PLAT_blitRenderer(GFX_Renderer* renderer) {
 	void* dst = renderer->dst + (renderer->dst_y * renderer->dst_p) + (renderer->dst_x * FIXED_BPP);
 
 	// Invoke scaler
-	((scaler_t)renderer->blit)(renderer->src,dst,renderer->src_w,renderer->src_h,renderer->src_p,renderer->dst_w,renderer->dst_h,renderer->dst_p);
+	((scaler_t)renderer->blit)(renderer->src, dst, renderer->src_w, renderer->src_h,
+	                           renderer->src_p, renderer->dst_w, renderer->dst_h, renderer->dst_p);
 }
 
 /**
@@ -856,11 +885,13 @@ void PLAT_blitRenderer(GFX_Renderer* renderer) {
  */
 void PLAT_flip(SDL_Surface* IGNORED, int sync) {
 	// Point Display Engine to current page (physical address)
-	vid.de_mem[DE_OVL_BA0(0)/4] = vid.de_mem[DE_OVL_BA0(2)/4] = (uintptr_t)(vid.fb_info.padd + vid.page * PAGE_SIZE);
+	vid.de_mem[DE_OVL_BA0(0) / 4] = vid.de_mem[DE_OVL_BA0(2) / 4] =
+	    (uintptr_t)(vid.fb_info.padd + vid.page * PAGE_SIZE);
 	DE_enableLayer(vid.de_mem);
 
 	// Wait for VSync if requested
-	if (sync) PLAT_vsync(0);
+	if (sync)
+		PLAT_vsync(0);
 
 	// Swap to other page for rendering next frame
 	vid.page ^= 1;
@@ -891,23 +922,23 @@ void PLAT_flip(SDL_Surface* IGNORED, int sync) {
  * - Independent positioning and scaling
  * - Can be toggled without affecting main framebuffer
  */
-#define OVERLAY_WIDTH PILL_SIZE		// Unscaled overlay width
-#define OVERLAY_HEIGHT PILL_SIZE	// Unscaled overlay height
-#define OVERLAY_BPP 4				// 32-bit ARGB
+#define OVERLAY_WIDTH PILL_SIZE // Unscaled overlay width
+#define OVERLAY_HEIGHT PILL_SIZE // Unscaled overlay height
+#define OVERLAY_BPP 4 // 32-bit ARGB
 #define OVERLAY_DEPTH 32
 #define OVERLAY_PITCH (OVERLAY_WIDTH * OVERLAY_BPP)
-#define OVERLAY_RGBA_MASK 0x00ff0000,0x0000ff00,0x000000ff,0xff000000	// ARGB format
-#define OVERLAY_FB 0				// Framebuffer device index
-#define OVERLAY_ID 1				// Overlay plane ID
+#define OVERLAY_RGBA_MASK 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000 // ARGB format
+#define OVERLAY_FB 0 // Framebuffer device index
+#define OVERLAY_ID 1 // Overlay plane ID
 
 /**
  * Overlay subsystem state.
  */
 static struct OVL_Context {
-	SDL_Surface* overlay;				// SDL surface for CPU rendering
-	struct owlfb_overlay_args oargs;	// IOCTL arguments
-	struct owlfb_overlay_info oinfo;	// Overlay configuration
-	ion_alloc_info_t ov_info;			// ION memory allocation
+	SDL_Surface* overlay; // SDL surface for CPU rendering
+	struct owlfb_overlay_args oargs; // IOCTL arguments
+	struct owlfb_overlay_info oinfo; // Overlay configuration
+	ion_alloc_info_t ov_info; // ION memory allocation
 } ovl;
 
 /**
@@ -931,14 +962,15 @@ static struct OVL_Context {
  */
 SDL_Surface* PLAT_initOverlay(void) {
 	// Create SDL surface (scaled by SCALE2 macro)
-	ovl.overlay = SDL_CreateRGBSurfaceFrom(NULL,SCALE2(OVERLAY_WIDTH,OVERLAY_HEIGHT),OVERLAY_DEPTH,SCALE1(OVERLAY_PITCH), OVERLAY_RGBA_MASK);
+	ovl.overlay = SDL_CreateRGBSurfaceFrom(NULL, SCALE2(OVERLAY_WIDTH, OVERLAY_HEIGHT),
+	                                       OVERLAY_DEPTH, SCALE1(OVERLAY_PITCH), OVERLAY_RGBA_MASK);
 	uint32_t size = ovl.overlay->h * ovl.overlay->pitch;
 
 	// Allocate ION memory for overlay buffer
 	ovl.ov_info.size = size;
 	ion_alloc(vid.fd_ion, &ovl.ov_info);
 	ovl.overlay->pixels = ovl.ov_info.vadd;
-	memset(ovl.overlay->pixels, 0xff, size);	// Initialize to white (will be overwritten)
+	memset(ovl.overlay->pixels, 0xff, size); // Initialize to white (will be overwritten)
 
 	// Setup IOCTL arguments
 	memset(&ovl.oargs, 0, sizeof(struct owlfb_overlay_args));
@@ -948,35 +980,37 @@ SDL_Surface* PLAT_initOverlay(void) {
 	ovl.oargs.uintptr_overly_info = (uintptr_t)&ovl.oinfo;
 
 	// Calculate overlay position (top-right corner)
-	int x,y,w,h;
+	int x, y, w, h;
 	w = h = ovl.overlay->w;
 	x = FIXED_WIDTH - SCALE1(PADDING) - w;
 	y = SCALE1(PADDING);
 
 	// Configure overlay info
-	ovl.oinfo.mem_off = (uintptr_t)ovl.ov_info.padd - vid.finfo.smem_start;	// Offset from FB base
+	ovl.oinfo.mem_off = (uintptr_t)ovl.ov_info.padd - vid.finfo.smem_start; // Offset from FB base
 	ovl.oinfo.mem_size = size;
 	ovl.oinfo.screen_width = PAGE_WIDTH;
-	ovl.oinfo.color_mode = OWL_DSS_COLOR_ARGB32;	// 32-bit ARGB with alpha
+	ovl.oinfo.color_mode = OWL_DSS_COLOR_ARGB32; // 32-bit ARGB with alpha
 	ovl.oinfo.img_width = w;
 	ovl.oinfo.img_height = h;
-	ovl.oinfo.xoff = 0;				// No cropping
+	ovl.oinfo.xoff = 0; // No cropping
 	ovl.oinfo.yoff = 0;
 	ovl.oinfo.width = w;
 	ovl.oinfo.height = h;
 	ovl.oinfo.rotation = 0;
-	ovl.oinfo.pos_x = x;			// Top-right corner position
+	ovl.oinfo.pos_x = x; // Top-right corner position
 	ovl.oinfo.pos_y = y;
-	ovl.oinfo.out_width = w;		// No scaling (1:1)
+	ovl.oinfo.out_width = w; // No scaling (1:1)
 	ovl.oinfo.out_height = h;
-	ovl.oinfo.global_alpha_en = 0;	// Use per-pixel alpha, not global
+	ovl.oinfo.global_alpha_en = 0; // Use per-pixel alpha, not global
 	ovl.oinfo.global_alpha = 0;
 	ovl.oinfo.pre_mult_alpha_en = 0;
-	ovl.oinfo.zorder = 3;			// Top layer (above main framebuffer)
+	ovl.oinfo.zorder = 3; // Top layer (above main framebuffer)
 
 	// Configure and enable overlay via IOCTL
-	if (ioctl(vid.fd_fb, OWLFB_OVERLAY_SETINFO, &ovl.oargs)<0) printf("SETINFO failed %s\n",strerror(errno));
-	if (ioctl(vid.fd_fb, OWLFB_OVERLAY_ENABLE, &ovl.oargs)<0) printf("ENABLE failed %s\n",strerror(errno));
+	if (ioctl(vid.fd_fb, OWLFB_OVERLAY_SETINFO, &ovl.oargs) < 0)
+		printf("SETINFO failed %s\n", strerror(errno));
+	if (ioctl(vid.fd_fb, OWLFB_OVERLAY_ENABLE, &ovl.oargs) < 0)
+		printf("ENABLE failed %s\n", strerror(errno));
 
 	// Overlay is enabled but not visible until PLAT_enableOverlay(1) is called
 	DE_enableLayer(vid.de_mem);
@@ -990,7 +1024,8 @@ SDL_Surface* PLAT_initOverlay(void) {
  * Disables the overlay plane and releases associated resources.
  */
 void PLAT_quitOverlay(void) {
-	if (ovl.overlay) SDL_FreeSurface(ovl.overlay);
+	if (ovl.overlay)
+		SDL_FreeSurface(ovl.overlay);
 	ion_free(vid.fd_ion, &ovl.ov_info);
 
 	// Disable overlay via IOCTL
@@ -1046,15 +1081,21 @@ void PLAT_getBatteryStatus(int* is_charging, int* charge) {
 
 	// Read voltage (in 10µV units, so divide by 10000 to get centivolts)
 	int i = getInt("/sys/class/power_supply/battery/voltage_now") / 10000; // 310-410
-	i -= 310; 	// Normalize to ~0-100
+	i -= 310; // Normalize to ~0-100
 
 	// Map to coarse percentage levels (prevents flicker)
-	     if (i>80) *charge = 100;
-	else if (i>60) *charge =  80;
-	else if (i>40) *charge =  60;
-	else if (i>20) *charge =  40;
-	else if (i>10) *charge =  20;
-	else           *charge =  10;
+	if (i > 80)
+		*charge = 100;
+	else if (i > 60)
+		*charge = 80;
+	else if (i > 40)
+		*charge = 60;
+	else if (i > 20)
+		*charge = 40;
+	else if (i > 10)
+		*charge = 20;
+	else
+		*charge = 10;
 }
 
 /**
@@ -1065,7 +1106,8 @@ void PLAT_getBatteryStatus(int* is_charging, int* charge) {
  * @note Uses FB_BLANK_UNBLANK/FB_BLANK_POWERDOWN constants
  */
 void PLAT_enableBacklight(int enable) {
-	putInt("/sys/class/backlight/backlight.2/bl_power", enable ? FB_BLANK_UNBLANK : FB_BLANK_POWERDOWN);
+	putInt("/sys/class/backlight/backlight.2/bl_power",
+	       enable ? FB_BLANK_UNBLANK : FB_BLANK_POWERDOWN);
 }
 
 /**
@@ -1114,14 +1156,22 @@ void PLAT_powerOff(void) {
 void PLAT_setCPUSpeed(int speed) {
 	int freq = 0;
 	switch (speed) {
-		case CPU_SPEED_MENU: 		freq =  504000; break;
-		case CPU_SPEED_POWERSAVE:	freq = 1104000; break;
-		case CPU_SPEED_NORMAL: 		freq = 1296000; break;
-		case CPU_SPEED_PERFORMANCE: freq = 1488000; break;
+	case CPU_SPEED_MENU:
+		freq = 504000;
+		break;
+	case CPU_SPEED_POWERSAVE:
+		freq = 1104000;
+		break;
+	case CPU_SPEED_NORMAL:
+		freq = 1296000;
+		break;
+	case CPU_SPEED_PERFORMANCE:
+		freq = 1488000;
+		break;
 	}
 
 	char cmd[32];
-	sprintf(cmd,"overclock.elf %d\n", freq);
+	sprintf(cmd, "overclock.elf %d\n", freq);
 	system(cmd);
 }
 
@@ -1139,7 +1189,7 @@ void PLAT_setCPUSpeed(int speed) {
 #define RUMBLE_PATH "/sys/class/power_supply/battery/moto"
 void PLAT_setRumble(int strength) {
 	// Convert from 16.16 fixed-point to 0-100 percentage
-	int val = MAX(0, MIN((100 * strength)>>16, 100));
+	int val = MAX(0, MIN((100 * strength) >> 16, 100));
 	putInt(RUMBLE_PATH, val);
 }
 

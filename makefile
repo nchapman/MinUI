@@ -95,6 +95,9 @@ analyze:
 format:
 	@make -f makefile.qa format
 
+format-check:
+	@make -f makefile.qa format-check
+
 # macOS development targets (forward to makefile.dev)
 dev:
 	@make -f makefile.dev dev

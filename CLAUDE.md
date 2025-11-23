@@ -31,7 +31,6 @@ workspace/
     ├── platform/
     │   ├── platform.h     # Hardware definitions (buttons, screen size)
     │   └── makefile.*     # Platform build configuration
-    ├── cores/             # Libretro cores for this platform
     └── keymon/            # Keypress monitoring daemon
 ```
 
@@ -132,9 +131,10 @@ make setup  # Generates all paks
 ```
 
 **Adding a new emulator core:**
-1. Add to `skeleton/TEMPLATES/minarch-paks/cores.json`
-2. Create `skeleton/TEMPLATES/minarch-paks/configs/<CORE>.cfg`
-3. Run `./scripts/generate-paks.sh all`
+1. Build core in external [minarch-cores repository](https://github.com/nchapman/minarch-cores)
+2. Add to `skeleton/TEMPLATES/minarch-paks/cores.json`
+3. Create `skeleton/TEMPLATES/minarch-paks/configs/<CORE>.cfg`
+4. Run `./scripts/generate-paks.sh all`
 
 **Adding a special pak:**
 1. Create directory in `skeleton/TEMPLATES/paks/<NAME>.pak/`

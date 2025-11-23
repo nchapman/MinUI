@@ -29,44 +29,44 @@
  * @note Based on eggs' GFXSample_rev15 implementation
  */
 
+#include <linux/fb.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <errno.h>
 
 #include <msettings.h>
 
-#include <linux/i2c.h>
 #include <linux/i2c-dev.h>
+#include <linux/i2c.h>
 
+#include "api.h"
 #include "defines.h"
 #include "platform.h"
-#include "api.h"
-#include "utils.h"
 #include "scaler.h"
+#include "utils.h"
 
 ///////////////////////////////
 // MI_GFX Hardware Blitting API
 ///////////////////////////////
 
-#include <mi_sys.h>
 #include <mi_gfx.h>
+#include <mi_sys.h>
 
 // Hardware variant flags (detected at runtime)
-int is_560p = 0;  // 1 if device supports 752x560 resolution
-int is_plus = 0;  // 1 if device is Miyoo Mini Plus with AXP223 PMIC
+int is_560p = 0; // 1 if device supports 752x560 resolution
+int is_plus = 0; // 1 if device is Miyoo Mini Plus with AXP223 PMIC
 
 // SDL surface extension: stores physical address for MI_GFX
-#define	pixelsPa	unused1
+#define pixelsPa unused1
 
 // Align value to 4KB boundary for cache operations
-#define ALIGN4K(val)	((val+4095)&(~4095))
+#define ALIGN4K(val) ((val + 4095) & (~4095))
 
 /**
  * Determines MI_GFX color format from SDL surface pixel format.
@@ -77,18 +77,25 @@ int is_plus = 0;  // 1 if device is Miyoo Mini Plus with AXP223 PMIC
  * @param surface SDL surface to analyze (may be NULL)
  * @return MI_GFX color format enum, defaults to ARGB8888 if unknown
  */
-static inline MI_GFX_ColorFmt_e	GFX_ColorFmt(SDL_Surface *surface) {
+static inline MI_GFX_ColorFmt_e GFX_ColorFmt(SDL_Surface* surface) {
 	if (surface) {
 		if (surface->format->BytesPerPixel == 2) {
-			if (surface->format->Amask == 0x0000) return E_MI_GFX_FMT_RGB565;
-			if (surface->format->Amask == 0x8000) return E_MI_GFX_FMT_ARGB1555;
-			if (surface->format->Amask == 0xF000) return E_MI_GFX_FMT_ARGB4444;
-			if (surface->format->Amask == 0x0001) return E_MI_GFX_FMT_RGBA5551;
-			if (surface->format->Amask == 0x000F) return E_MI_GFX_FMT_RGBA4444;
+			if (surface->format->Amask == 0x0000)
+				return E_MI_GFX_FMT_RGB565;
+			if (surface->format->Amask == 0x8000)
+				return E_MI_GFX_FMT_ARGB1555;
+			if (surface->format->Amask == 0xF000)
+				return E_MI_GFX_FMT_ARGB4444;
+			if (surface->format->Amask == 0x0001)
+				return E_MI_GFX_FMT_RGBA5551;
+			if (surface->format->Amask == 0x000F)
+				return E_MI_GFX_FMT_RGBA4444;
 			return E_MI_GFX_FMT_RGB565;
 		}
-		if (surface->format->Bmask == 0x000000FF) return E_MI_GFX_FMT_ARGB8888;
-		if (surface->format->Rmask == 0x000000FF) return E_MI_GFX_FMT_ABGR8888;
+		if (surface->format->Bmask == 0x000000FF)
+			return E_MI_GFX_FMT_ARGB8888;
+		if (surface->format->Rmask == 0x000000FF)
+			return E_MI_GFX_FMT_ABGR8888;
 	}
 	return E_MI_GFX_FMT_ARGB8888;
 }
@@ -108,9 +115,10 @@ static inline MI_GFX_ColorFmt_e	GFX_ColorFmt(SDL_Surface *surface) {
  */
 static inline void FlushCacheNeeded(void* pixels, uint32_t pitch, uint32_t y, uint32_t h) {
 	uintptr_t pixptr = (uintptr_t)pixels;
-	uintptr_t startaddress = (pixptr + pitch*y)&(~4095);
-	uint32_t size = ALIGN4K(pixptr + pitch*(y+h)) - startaddress;
-	if (size) MI_SYS_FlushInvCache((void*)startaddress, size);
+	uintptr_t startaddress = (pixptr + pitch * y) & (~4095);
+	uint32_t size = ALIGN4K(pixptr + pitch * (y + h)) - startaddress;
+	if (size)
+		MI_SYS_FlushInvCache((void*)startaddress, size);
 }
 
 /**
@@ -136,8 +144,10 @@ static inline void FlushCacheNeeded(void* pixels, uint32_t pitch, uint32_t y, ui
  *
  * @note Respects SDL_SRCALPHA and SDL_SRCCOLORKEY surface flags
  */
-static inline void GFX_BlitSurfaceExec(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, uint32_t rotate, uint32_t mirror, uint32_t nowait) {
-	if ((src)&&(dst)&&(src->pixelsPa)&&(dst->pixelsPa)) {
+static inline void GFX_BlitSurfaceExec(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst,
+                                       SDL_Rect* dstrect, uint32_t rotate, uint32_t mirror,
+                                       uint32_t nowait) {
+	if ((src) && (dst) && (src->pixelsPa) && (dst->pixelsPa)) {
 		MI_GFX_Surface_t Src;
 		MI_GFX_Surface_t Dst;
 		MI_GFX_Rect_t SrcRect;
@@ -171,7 +181,7 @@ static inline void GFX_BlitSurfaceExec(SDL_Surface *src, SDL_Rect *srcrect, SDL_
 		if (dstrect) {
 			DstRect.s32Xpos = dstrect->x;
 			DstRect.s32Ypos = dstrect->y;
-			if (dstrect->w|dstrect->h) {
+			if (dstrect->w | dstrect->h) {
 				DstRect.u32Width = dstrect->w;
 				DstRect.u32Height = dstrect->h;
 			} else {
@@ -184,8 +194,10 @@ static inline void GFX_BlitSurfaceExec(SDL_Surface *src, SDL_Rect *srcrect, SDL_
 			DstRect.u32Width = Dst.u32Width;
 			DstRect.u32Height = Dst.u32Height;
 		}
-		if (rotate & 1) FlushCacheNeeded(dst->pixels, dst->pitch, DstRect.s32Ypos, DstRect.u32Width);
-		else FlushCacheNeeded(dst->pixels, dst->pitch, DstRect.s32Ypos, DstRect.u32Height);
+		if (rotate & 1)
+			FlushCacheNeeded(dst->pixels, dst->pitch, DstRect.s32Ypos, DstRect.u32Width);
+		else
+			FlushCacheNeeded(dst->pixels, dst->pitch, DstRect.s32Ypos, DstRect.u32Height);
 
 		// Configure blending options
 		memset(&Opt, 0, sizeof(Opt));
@@ -195,10 +207,14 @@ static inline void GFX_BlitSurfaceExec(SDL_Surface *src, SDL_Rect *srcrect, SDL_
 			Opt.eDstDfbBldOp = E_MI_GFX_DFB_BLD_INVSRCALPHA;
 			if (src->format->alpha != SDL_ALPHA_OPAQUE) {
 				// Global alpha: apply surface-level alpha to entire source
-				Opt.u32GlobalSrcConstColor = (src->format->alpha << (src->format->Ashift - src->format->Aloss)) & src->format->Amask;
-				Opt.eDFBBlendFlag = (MI_Gfx_DfbBlendFlags_e)
-						   (E_MI_GFX_DFB_BLEND_SRC_PREMULTIPLY | E_MI_GFX_DFB_BLEND_COLORALPHA | E_MI_GFX_DFB_BLEND_ALPHACHANNEL);
-			} else	Opt.eDFBBlendFlag = E_MI_GFX_DFB_BLEND_SRC_PREMULTIPLY;
+				Opt.u32GlobalSrcConstColor =
+				    (src->format->alpha << (src->format->Ashift - src->format->Aloss)) &
+				    src->format->Amask;
+				Opt.eDFBBlendFlag = (MI_Gfx_DfbBlendFlags_e)(E_MI_GFX_DFB_BLEND_SRC_PREMULTIPLY |
+				                                             E_MI_GFX_DFB_BLEND_COLORALPHA |
+				                                             E_MI_GFX_DFB_BLEND_ALPHACHANNEL);
+			} else
+				Opt.eDFBBlendFlag = E_MI_GFX_DFB_BLEND_SRC_PREMULTIPLY;
 		}
 
 		// Handle color key (transparency) if requested
@@ -207,7 +223,7 @@ static inline void GFX_BlitSurfaceExec(SDL_Surface *src, SDL_Rect *srcrect, SDL_
 			Opt.stSrcColorKeyInfo.eCKeyFmt = Src.eColorFmt;
 			Opt.stSrcColorKeyInfo.eCKeyOp = E_MI_GFX_RGB_OP_EQUAL;
 			Opt.stSrcColorKeyInfo.stCKeyVal.u32ColorStart =
-			Opt.stSrcColorKeyInfo.stCKeyVal.u32ColorEnd = src->format->colorkey;
+			    Opt.stSrcColorKeyInfo.stCKeyVal.u32ColorEnd = src->format->colorkey;
 		}
 		Opt.eSrcDfbBldOp = E_MI_GFX_DFB_BLD_ONE;
 		Opt.eRotate = (MI_GFX_Rotate_e)rotate;
@@ -219,7 +235,8 @@ static inline void GFX_BlitSurfaceExec(SDL_Surface *src, SDL_Rect *srcrect, SDL_
 
 		// Submit blit operation to hardware and optionally wait
 		MI_GFX_BitBlit(&Src, &SrcRect, &Dst, &DstRect, &Opt, &Fence);
-		if (!nowait) MI_GFX_WaitAllDone(FALSE, Fence);
+		if (!nowait)
+			MI_GFX_WaitAllDone(FALSE, Fence);
 	} else {
 		// Fallback to software blit if physical addresses not available
 		SDL_BlitSurface(src, srcrect, dst, dstrect);
@@ -251,9 +268,10 @@ void PLAT_initLid(void) {
 int PLAT_lidChanged(int* state) {
 	if (lid.has_lid) {
 		int lid_open = getInt(LID_PATH);
-		if (lid_open!=lid.is_open) {
+		if (lid_open != lid.is_open) {
 			lid.is_open = lid_open;
-			if (state) *state = lid_open;
+			if (state)
+				*state = lid_open;
 			return 1;
 		}
 	}
@@ -283,8 +301,8 @@ void PLAT_quitInput(void) {
  * virtual address (for CPU access).
  */
 typedef struct HWBuffer {
-	MI_PHY padd;   // Physical address (used by MI_GFX hardware)
-	void* vadd;    // Virtual address (used by CPU)
+	MI_PHY padd; // Physical address (used by MI_GFX hardware)
+	void* vadd; // Virtual address (used by CPU)
 } HWBuffer;
 
 /**
@@ -293,17 +311,17 @@ typedef struct HWBuffer {
  * Manages double-buffered rendering with ION memory allocation.
  */
 static struct VID_Context {
-	SDL_Surface* video;    // SDL framebuffer surface
-	SDL_Surface* screen;   // Software rendering surface (may be same as video)
-	HWBuffer buffer;       // ION-allocated buffer for double buffering
+	SDL_Surface* video; // SDL framebuffer surface
+	SDL_Surface* screen; // Software rendering surface (may be same as video)
+	HWBuffer buffer; // ION-allocated buffer for double buffering
 
-	int page;              // Current backbuffer page (0 or 1)
-	int width;             // Current rendering width
-	int height;            // Current rendering height
-	int pitch;             // Current pitch in bytes
+	int page; // Current backbuffer page (0 or 1)
+	int width; // Current rendering width
+	int height; // Current rendering height
+	int pitch; // Current pitch in bytes
 
-	int direct;            // 1 if rendering directly to video, 0 if using intermediate buffer
-	int cleared;           // 1 if clear is deferred until offscreen
+	int direct; // 1 if rendering directly to video, 0 if using intermediate buffer
+	int cleared; // 1 if clear is deferred until offscreen
 } vid;
 
 #define MODES_PATH "/sys/class/graphics/fb0/modes"
@@ -315,11 +333,16 @@ static struct VID_Context {
  * @param mode Mode string to search for (e.g., "752x560p")
  * @return 1 if mode is supported, 0 otherwise
  */
-static int hasMode(const char *path, const char *mode) {
-    FILE *f = fopen(path, "r"); if (!f) return 0;
-    char s[128];
-    while (fgets(s, sizeof s, f)) if (strstr(s, mode)) return fclose(f), 1;
-    fclose(f); return 0;
+static int hasMode(const char* path, const char* mode) {
+	FILE* f = fopen(path, "r");
+	if (!f)
+		return 0;
+	char s[128];
+	while (fgets(s, sizeof s, f))
+		if (strstr(s, mode))
+			return fclose(f), 1;
+	fclose(f);
+	return 0;
 }
 
 /**
@@ -359,15 +382,17 @@ SDL_Surface* PLAT_initVideo(void) {
 
 	// Initialize rendering state
 	vid.page = 1;
-	vid.direct = 1;  // Start in direct mode (no intermediate buffer)
+	vid.direct = 1; // Start in direct mode (no intermediate buffer)
 	vid.width = FIXED_WIDTH;
 	vid.height = FIXED_HEIGHT;
 	vid.pitch = FIXED_PITCH;
 	vid.cleared = 0;
 
 	// Create screen surface backed by ION memory
-	vid.screen = SDL_CreateRGBSurfaceFrom(vid.buffer.vadd + ALIGN4K(vid.page*PAGE_SIZE),vid.width,vid.height,FIXED_DEPTH,vid.pitch,RGBA_MASK_AUTO);
-	vid.screen->pixelsPa = vid.buffer.padd + ALIGN4K(vid.page*PAGE_SIZE);
+	vid.screen =
+	    SDL_CreateRGBSurfaceFrom(vid.buffer.vadd + ALIGN4K(vid.page * PAGE_SIZE), vid.width,
+	                             vid.height, FIXED_DEPTH, vid.pitch, RGBA_MASK_AUTO);
+	vid.screen->pixelsPa = vid.buffer.padd + ALIGN4K(vid.page * PAGE_SIZE);
 	memset(vid.screen->pixels, 0, vid.pitch * vid.height);
 
 	return vid.direct ? vid.video : vid.screen;
@@ -396,8 +421,8 @@ void PLAT_quitVideo(void) {
  * @note Direct memset() on screen->pixels can cause crashes with ION memory
  */
 void PLAT_clearVideo(SDL_Surface* screen) {
-	MI_SYS_FlushInvCache(vid.buffer.vadd + ALIGN4K(vid.page*PAGE_SIZE), ALIGN4K(PAGE_SIZE));
-	MI_SYS_MemsetPa(vid.buffer.padd + ALIGN4K(vid.page*PAGE_SIZE), 0, PAGE_SIZE);
+	MI_SYS_FlushInvCache(vid.buffer.vadd + ALIGN4K(vid.page * PAGE_SIZE), ALIGN4K(PAGE_SIZE));
+	MI_SYS_MemsetPa(vid.buffer.padd + ALIGN4K(vid.page * PAGE_SIZE), 0, PAGE_SIZE);
 	SDL_FillRect(screen, NULL, 0);
 }
 
@@ -425,19 +450,17 @@ void PLAT_clearAll(void) {
  * @note Trade-offs are hardware-specific and somewhat counterintuitive
  */
 void PLAT_setVsync(int vsync) {
-	if (vsync==VSYNC_OFF) {
+	if (vsync == VSYNC_OFF) {
 		putenv("GFX_FLIPWAIT=0");
 		putenv("GFX_BLOCKING=0");
-	}
-	else if (vsync==VSYNC_LENIENT) {
+	} else if (vsync == VSYNC_LENIENT) {
 		putenv("GFX_FLIPWAIT=0");
 		putenv("GFX_BLOCKING=1");
-	}
-	else if (vsync==VSYNC_STRICT) {
+	} else if (vsync == VSYNC_STRICT) {
 		putenv("GFX_FLIPWAIT=1");
 		putenv("GFX_BLOCKING=1");
 	}
-	SDL_GetVideoInfo();  // Apply environment changes
+	SDL_GetVideoInfo(); // Apply environment changes
 }
 
 /**
@@ -455,22 +478,23 @@ void PLAT_setVsync(int vsync) {
  */
 SDL_Surface* PLAT_resizeVideo(int w, int h, int pitch) {
 	// Determine if we can render directly to framebuffer
-	vid.direct = w==FIXED_WIDTH && h==FIXED_HEIGHT && pitch==FIXED_PITCH;
+	vid.direct = w == FIXED_WIDTH && h == FIXED_HEIGHT && pitch == FIXED_PITCH;
 	vid.width = w;
 	vid.height = h;
 	vid.pitch = pitch;
 
 	if (vid.direct) {
 		memset(vid.video->pixels, 0, vid.pitch * vid.height);
-	}
-	else {
+	} else {
 		// Recreate screen surface with new dimensions
 		vid.screen->pixels = NULL;
 		vid.screen->pixelsPa = NULL; // Prevent custom SDL from freeing ION memory
 		SDL_FreeSurface(vid.screen);
 
-		vid.screen = SDL_CreateRGBSurfaceFrom(vid.buffer.vadd + ALIGN4K(vid.page*PAGE_SIZE),vid.width,vid.height,FIXED_DEPTH,vid.pitch,RGBA_MASK_AUTO);
-		vid.screen->pixelsPa = vid.buffer.padd + ALIGN4K(vid.page*PAGE_SIZE);
+		vid.screen =
+		    SDL_CreateRGBSurfaceFrom(vid.buffer.vadd + ALIGN4K(vid.page * PAGE_SIZE), vid.width,
+		                             vid.height, FIXED_DEPTH, vid.pitch, RGBA_MASK_AUTO);
+		vid.screen->pixelsPa = vid.buffer.padd + ALIGN4K(vid.page * PAGE_SIZE);
 		memset(vid.screen->pixels, 0, vid.pitch * vid.height);
 	}
 
@@ -488,8 +512,8 @@ void PLAT_setNearestNeighbor(int enabled) {
 // Pixel Effects and Scaling
 ///////////////////////////////
 
-static int next_effect = EFFECT_NONE;  // Effect to apply on next render
-static int effect_type = EFFECT_NONE;  // Currently active effect
+static int next_effect = EFFECT_NONE; // Effect to apply on next render
+static int effect_type = EFFECT_NONE; // Currently active effect
 
 /**
  * Forces scaler reload when sharpness settings change.
@@ -500,8 +524,9 @@ static int effect_type = EFFECT_NONE;  // Currently active effect
  * @param sharpness Sharpness value (unused, but triggers reload)
  */
 void PLAT_setSharpness(int sharpness) {
-	if (effect_type>=EFFECT_NONE) next_effect = effect_type;
-	effect_type = -1;  // Force reload
+	if (effect_type >= EFFECT_NONE)
+		next_effect = effect_type;
+	effect_type = -1; // Force reload
 }
 
 /**
@@ -519,7 +544,8 @@ void PLAT_setEffect(int effect) {
  * @param remaining Milliseconds remaining in frame
  */
 void PLAT_vsync(int remaining) {
-	if (remaining>0) SDL_Delay(remaining);
+	if (remaining > 0)
+		SDL_Delay(remaining);
 }
 
 /**
@@ -530,30 +556,42 @@ void PLAT_vsync(int remaining) {
  */
 scaler_t PLAT_getScaler(GFX_Renderer* renderer) {
 	// Scanline effect scalers
-	if (effect_type==EFFECT_LINE) {
+	if (effect_type == EFFECT_LINE) {
 		switch (renderer->scale) {
-			case 4:  return scale4x_line;
-			case 3:  return scale3x_line;
-			case 2:  return scale2x_line;
-			default: return scale1x_line;
+		case 4:
+			return scale4x_line;
+		case 3:
+			return scale3x_line;
+		case 2:
+			return scale2x_line;
+		default:
+			return scale1x_line;
 		}
 	}
 	// Grid effect scalers
-	else if (effect_type==EFFECT_GRID) {
+	else if (effect_type == EFFECT_GRID) {
 		switch (renderer->scale) {
-			case 3:  return scale3x_grid;
-			case 2:  return scale2x_grid;
+		case 3:
+			return scale3x_grid;
+		case 2:
+			return scale2x_grid;
 		}
 	}
 
 	// Default nearest-neighbor scalers (NEON-optimized)
 	switch (renderer->scale) {
-		case 6:  return scale6x6_n16;
-		case 5:  return scale5x5_n16;
-		case 4:  return scale4x4_n16;
-		case 3:  return scale3x3_n16;
-		case 2:  return scale2x2_n16;
-		default: return scale1x1_n16;
+	case 6:
+		return scale6x6_n16;
+	case 5:
+		return scale5x5_n16;
+	case 4:
+		return scale4x4_n16;
+	case 3:
+		return scale3x3_n16;
+	case 2:
+		return scale2x2_n16;
+	default:
+		return scale1x1_n16;
 	}
 }
 
@@ -567,14 +605,15 @@ scaler_t PLAT_getScaler(GFX_Renderer* renderer) {
  */
 void PLAT_blitRenderer(GFX_Renderer* renderer) {
 	// Reload scaler if effect changed
-	if (effect_type!=next_effect) {
+	if (effect_type != next_effect) {
 		effect_type = next_effect;
 		renderer->blit = PLAT_getScaler(renderer);
 	}
 
 	// Calculate destination pointer with offset
 	void* dst = renderer->dst + (renderer->dst_y * renderer->dst_p) + (renderer->dst_x * FIXED_BPP);
-	((scaler_t)renderer->blit)(renderer->src,dst,renderer->src_w,renderer->src_h,renderer->src_p,renderer->dst_w,renderer->dst_h,renderer->dst_p);
+	((scaler_t)renderer->blit)(renderer->src, dst, renderer->src_w, renderer->src_h,
+	                           renderer->src_p, renderer->dst_w, renderer->dst_h, renderer->dst_p);
 }
 
 /**
@@ -589,15 +628,16 @@ void PLAT_blitRenderer(GFX_Renderer* renderer) {
  */
 void PLAT_flip(SDL_Surface* IGNORED, int sync) {
 	// Scale to framebuffer if using intermediate buffer
-	if (!vid.direct) GFX_BlitSurfaceExec(vid.screen, NULL, vid.video, NULL, 0,0,1);
+	if (!vid.direct)
+		GFX_BlitSurfaceExec(vid.screen, NULL, vid.video, NULL, 0, 0, 1);
 
 	SDL_Flip(vid.video);
 
 	// Swap to other page for double buffering
 	if (!vid.direct) {
 		vid.page ^= 1;
-		vid.screen->pixels = vid.buffer.vadd + ALIGN4K(vid.page*PAGE_SIZE);
-		vid.screen->pixelsPa = vid.buffer.padd + ALIGN4K(vid.page*PAGE_SIZE);
+		vid.screen->pixels = vid.buffer.vadd + ALIGN4K(vid.page * PAGE_SIZE);
+		vid.screen->pixelsPa = vid.buffer.padd + ALIGN4K(vid.page * PAGE_SIZE);
 	}
 
 	// Complete deferred clear if pending
@@ -616,7 +656,7 @@ void PLAT_flip(SDL_Surface* IGNORED, int sync) {
 #define OVERLAY_BPP 4
 #define OVERLAY_DEPTH 16
 #define OVERLAY_PITCH (OVERLAY_WIDTH * OVERLAY_BPP)
-#define OVERLAY_RGBA_MASK 0x00ff0000,0x0000ff00,0x000000ff,0xff000000  // ARGB
+#define OVERLAY_RGBA_MASK 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000 // ARGB
 
 static struct OVL_Context {
 	SDL_Surface* overlay;
@@ -628,7 +668,8 @@ static struct OVL_Context {
  * @return Overlay surface for rendering status indicators
  */
 SDL_Surface* PLAT_initOverlay(void) {
-	ovl.overlay = SDL_CreateRGBSurface(SDL_SWSURFACE, SCALE2(OVERLAY_WIDTH,OVERLAY_HEIGHT),OVERLAY_DEPTH,OVERLAY_RGBA_MASK);
+	ovl.overlay = SDL_CreateRGBSurface(SDL_SWSURFACE, SCALE2(OVERLAY_WIDTH, OVERLAY_HEIGHT),
+	                                   OVERLAY_DEPTH, OVERLAY_RGBA_MASK);
 	return ovl.overlay;
 }
 
@@ -636,7 +677,8 @@ SDL_Surface* PLAT_initOverlay(void) {
  * Cleans up overlay surface.
  */
 void PLAT_quitOverlay(void) {
-	if (ovl.overlay) SDL_FreeSurface(ovl.overlay);
+	if (ovl.overlay)
+		SDL_FreeSurface(ovl.overlay);
 }
 
 /**
@@ -655,8 +697,8 @@ void PLAT_enableOverlay(int enable) {
 ///////////////////////////////
 
 // I2C device and address for AXP223 power management IC
-#define	AXPDEV	"/dev/i2c-1"
-#define	AXPID	(0x34)
+#define AXPDEV "/dev/i2c-1"
+#define AXPID (0x34)
 
 /**
  * Writes a register on the AXP223 PMIC (Miyoo Mini Plus only).
@@ -691,7 +733,8 @@ int axp_write(unsigned char address, unsigned char val) {
 	ret = ioctl(fd, I2C_RDWR, &packets);
 
 	close(fd);
-	if (ret < 0) return -1;
+	if (ret < 0)
+		return -1;
 	return 0;
 }
 
@@ -737,7 +780,8 @@ int axp_read(unsigned char address) {
 	ret = ioctl(fd, I2C_RDWR, &packets);
 
 	close(fd);
-	if(ret < 0) return -1;
+	if (ret < 0)
+		return -1;
 	return val;
 }
 
@@ -745,7 +789,7 @@ int axp_read(unsigned char address) {
 // Battery and Power Status
 ///////////////////////////////
 
-static int online = 0;  // WiFi connection status
+static int online = 0; // WiFi connection status
 
 /**
  * Gets battery charge level and charging status.
@@ -763,22 +807,29 @@ static int online = 0;  // WiFi connection status
  */
 void PLAT_getBatteryStatus(int* is_charging, int* charge) {
 	// Check charging status (hardware-dependent)
-	*is_charging = is_plus ? (axp_read(0x00) & 0x4) > 0 : getInt("/sys/devices/gpiochip0/gpio/gpio59/value");
+	*is_charging =
+	    is_plus ? (axp_read(0x00) & 0x4) > 0 : getInt("/sys/devices/gpiochip0/gpio/gpio59/value");
 
 	// Read battery percentage from system daemon
 	int i = getInt("/tmp/battery"); // 0-100
 
 	// Quantize to reduce visual noise in battery indicator
-	     if (i>80) *charge = 100;
-	else if (i>60) *charge =  80;
-	else if (i>40) *charge =  60;
-	else if (i>20) *charge =  40;
-	else if (i>10) *charge =  20;
-	else           *charge =  10;
+	if (i > 80)
+		*charge = 100;
+	else if (i > 60)
+		*charge = 80;
+	else if (i > 40)
+		*charge = 60;
+	else if (i > 20)
+		*charge = 40;
+	else if (i > 10)
+		*charge = 20;
+	else
+		*charge = 10;
 
 	// Update WiFi connection status
 	char status[16];
-	getFile("/sys/class/net/wlan0/operstate", status,16);
+	getFile("/sys/class/net/wlan0/operstate", status, 16);
 	online = prefixMatch("up", status);
 }
 
@@ -796,10 +847,9 @@ void PLAT_enableBacklight(int enable) {
 		putInt("/sys/class/gpio/gpio4/value", 1);
 		putInt("/sys/class/gpio/unexport", 4);
 		putInt("/sys/class/pwm/pwmchip0/export", 0);
-		putInt("/sys/class/pwm/pwmchip0/pwm0/enable",0);
-		putInt("/sys/class/pwm/pwmchip0/pwm0/enable",1);
-	}
-	else {
+		putInt("/sys/class/pwm/pwmchip0/pwm0/enable", 0);
+		putInt("/sys/class/pwm/pwmchip0/pwm0/enable", 1);
+	} else {
 		// Use GPIO to turn off backlight
 		putInt("/sys/class/gpio/export", 4);
 		putFile("/sys/class/gpio/gpio4/direction", "out");
@@ -829,7 +879,8 @@ void PLAT_powerOff(void) {
 	GFX_quit();
 
 	system("shutdown");
-	while (1) pause();  // Wait for kernel to power off
+	while (1)
+		pause(); // Wait for kernel to power off
 }
 
 ///////////////////////////////
@@ -850,14 +901,22 @@ void PLAT_powerOff(void) {
 void PLAT_setCPUSpeed(int speed) {
 	int freq = 0;
 	switch (speed) {
-		case CPU_SPEED_MENU: 		freq =  504000; break;
-		case CPU_SPEED_POWERSAVE:	freq = 1104000; break;
-		case CPU_SPEED_NORMAL: 		freq = 1296000; break;
-		case CPU_SPEED_PERFORMANCE: freq = 1488000; break;
+	case CPU_SPEED_MENU:
+		freq = 504000;
+		break;
+	case CPU_SPEED_POWERSAVE:
+		freq = 1104000;
+		break;
+	case CPU_SPEED_NORMAL:
+		freq = 1296000;
+		break;
+	case CPU_SPEED_PERFORMANCE:
+		freq = 1488000;
+		break;
 	}
 
 	char cmd[32];
-	sprintf(cmd,"overclock.elf %d\n", freq);
+	sprintf(cmd, "overclock.elf %d\n", freq);
 	system(cmd);
 }
 
@@ -873,22 +932,31 @@ void PLAT_setCPUSpeed(int speed) {
  * @param strength 0 to disable, non-zero to enable
  */
 void PLAT_setRumble(int strength) {
-    static char lastvalue = 0;
-    const char str_export[2] = "48";
-    const char str_direction[3] = "out";
-    char value[1];
-    int fd;
+	static char lastvalue = 0;
+	const char str_export[2] = "48";
+	const char str_direction[3] = "out";
+	char value[1];
+	int fd;
 
-    value[0] = (strength == 0 ? 0x31 : 0x30); // '0' (off) : '1' (on)
-    if (lastvalue != value[0]) {
-       fd = open("/sys/class/gpio/export", O_WRONLY);
-       if (fd > 0) { write(fd, str_export, 2); close(fd); }
-       fd = open("/sys/class/gpio/gpio48/direction", O_WRONLY);
-       if (fd > 0) { write(fd, str_direction, 3); close(fd); }
-       fd = open("/sys/class/gpio/gpio48/value", O_WRONLY);
-       if (fd > 0) { write(fd, value, 1); close(fd); }
-       lastvalue = value[0];
-    }
+	value[0] = (strength == 0 ? 0x31 : 0x30); // '0' (off) : '1' (on)
+	if (lastvalue != value[0]) {
+		fd = open("/sys/class/gpio/export", O_WRONLY);
+		if (fd > 0) {
+			write(fd, str_export, 2);
+			close(fd);
+		}
+		fd = open("/sys/class/gpio/gpio48/direction", O_WRONLY);
+		if (fd > 0) {
+			write(fd, str_direction, 3);
+			close(fd);
+		}
+		fd = open("/sys/class/gpio/gpio48/value", O_WRONLY);
+		if (fd > 0) {
+			write(fd, value, 1);
+			close(fd);
+		}
+		lastvalue = value[0];
+	}
 }
 
 ///////////////////////////////
@@ -922,9 +990,12 @@ int PLAT_pickSampleRate(int requested, int max) {
  */
 char* PLAT_getModel(void) {
 	char* model = getenv("MY_MODEL");
-	if (exactMatch(model,"MY285")) return "Miyoo Mini Flip";
-	else if (is_plus) return "Miyoo Mini Plus";
-	else return "Miyoo Mini";
+	if (exactMatch(model, "MY285"))
+		return "Miyoo Mini Flip";
+	else if (is_plus)
+		return "Miyoo Mini Plus";
+	else
+		return "Miyoo Mini";
 }
 
 /**

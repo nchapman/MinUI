@@ -15,21 +15,21 @@
  * soft (bilinear) and crisp (nearest neighbor + linear downscale) rendering.
  */
 
+#include <linux/fb.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <errno.h>
 
 #include <msettings.h>
 
+#include "api.h"
 #include "defines.h"
 #include "platform.h"
-#include "api.h"
 #include "utils.h"
 
 #include "scaler.h"
@@ -39,7 +39,7 @@
 ///////////////////////////////
 
 // Uses SDL_Joystick API instead of raw evdev for button/axis input
-static SDL_Joystick *joystick;
+static SDL_Joystick* joystick;
 
 /**
  * Initializes joystick input subsystem.
@@ -74,27 +74,27 @@ void PLAT_quitInput(void) {
  * Supports both direct rendering (UI) and blit rendering (game cores).
  */
 static struct VID_Context {
-	SDL_Window* window;      // Main window
-	SDL_Renderer* renderer;  // Hardware-accelerated renderer
-	SDL_Texture* texture;    // Source texture (game output)
-	SDL_Texture* target;     // Intermediate target for crisp rendering
-	SDL_Texture* effect;     // Grid/line overlay texture
-	SDL_Surface* buffer;     // Software surface wrapper for texture
-	SDL_Surface* screen;     // Main screen surface for UI
+	SDL_Window* window; // Main window
+	SDL_Renderer* renderer; // Hardware-accelerated renderer
+	SDL_Texture* texture; // Source texture (game output)
+	SDL_Texture* target; // Intermediate target for crisp rendering
+	SDL_Texture* effect; // Grid/line overlay texture
+	SDL_Surface* buffer; // Software surface wrapper for texture
+	SDL_Surface* screen; // Main screen surface for UI
 
-	GFX_Renderer* blit;      // Active game renderer (non-NULL during game rendering)
+	GFX_Renderer* blit; // Active game renderer (non-NULL during game rendering)
 
-	int width;               // Current texture width
-	int height;              // Current texture height
-	int pitch;               // Current row stride in bytes
-	int sharpness;           // SHARPNESS_SOFT or SHARPNESS_CRISP
+	int width; // Current texture width
+	int height; // Current texture height
+	int pitch; // Current row stride in bytes
+	int sharpness; // SHARPNESS_SOFT or SHARPNESS_CRISP
 } vid;
 
 // Device native resolution and rotation state
 static int device_width;
 static int device_height;
 static int device_pitch;
-static int rotate = 0;  // Set to 1 for portrait mode (90 degree rotation)
+static int rotate = 0; // Set to 1 for portrait mode (90 degree rotation)
 
 /**
  * Initializes SDL video subsystem and creates rendering context.
@@ -119,65 +119,70 @@ SDL_Surface* PLAT_initVideo(void) {
 
 	// Log available video and render drivers
 	LOG_info("Available video drivers:\n");
-	for (int i=0; i<SDL_GetNumVideoDrivers(); i++) {
+	for (int i = 0; i < SDL_GetNumVideoDrivers(); i++) {
 		LOG_info("- %s\n", SDL_GetVideoDriver(i));
 	}
 	LOG_info("Current video driver: %s\n", SDL_GetCurrentVideoDriver());
 
 	LOG_info("Available render drivers:\n");
-	for (int i=0; i<SDL_GetNumRenderDrivers(); i++) {
+	for (int i = 0; i < SDL_GetNumRenderDrivers(); i++) {
 		SDL_RendererInfo info;
-		SDL_GetRenderDriverInfo(i,&info);
+		SDL_GetRenderDriverInfo(i, &info);
 		LOG_info("- %s\n", info.name);
 	}
 
 	// Detect portrait mode (height > width) and enable rotation
 	LOG_info("Available display modes:\n");
 	SDL_DisplayMode mode;
-	for (int i=0; i<SDL_GetNumDisplayModes(0); i++) {
+	for (int i = 0; i < SDL_GetNumDisplayModes(0); i++) {
 		SDL_GetDisplayMode(0, i, &mode);
-		LOG_info("- %ix%i (%s)\n", mode.w,mode.h, SDL_GetPixelFormatName(mode.format));
+		LOG_info("- %ix%i (%s)\n", mode.w, mode.h, SDL_GetPixelFormatName(mode.format));
 	}
 	SDL_GetCurrentDisplayMode(0, &mode);
-	if (mode.h>mode.w) rotate = 1;  // Enable 90-degree rotation for portrait displays
-	LOG_info("Current display mode: %ix%i (%s)\n", mode.w,mode.h, SDL_GetPixelFormatName(mode.format));
-	
+	if (mode.h > mode.w)
+		rotate = 1; // Enable 90-degree rotation for portrait displays
+	LOG_info("Current display mode: %ix%i (%s)\n", mode.w, mode.h,
+	         SDL_GetPixelFormatName(mode.format));
+
 	int w = FIXED_WIDTH;
 	int h = FIXED_HEIGHT;
 	int p = FIXED_PITCH;
-	vid.window   = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w,h, SDL_WINDOW_SHOWN);
-	vid.renderer = SDL_CreateRenderer(vid.window,-1,SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
-	
+	vid.window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h,
+	                              SDL_WINDOW_SHOWN);
+	vid.renderer =
+	    SDL_CreateRenderer(vid.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
 	SDL_RendererInfo info;
 	SDL_GetRendererInfo(vid.renderer, &info);
 	LOG_info("Current render driver: %s\n", info.name);
-	
-	int rw,rh;
-	SDL_GetRendererOutputSize(vid.renderer, &rw,&rh);
-	LOG_info("renderer size: %ix%i\n", rw,rh);
-	
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,"0");
-	vid.texture = SDL_CreateTexture(vid.renderer,SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w,h);
-	int tw,th;
-	SDL_QueryTexture(vid.texture, NULL,NULL,&tw,&th);
-	LOG_info("texture size: %ix%i\n", tw,th); // TODO: why is this 1024x768? :lolsob:
-	
-	vid.target	= NULL; // only needed for non-native sizes
-	
+
+	int rw, rh;
+	SDL_GetRendererOutputSize(vid.renderer, &rw, &rh);
+	LOG_info("renderer size: %ix%i\n", rw, rh);
+
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+	vid.texture =
+	    SDL_CreateTexture(vid.renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w, h);
+	int tw, th;
+	SDL_QueryTexture(vid.texture, NULL, NULL, &tw, &th);
+	LOG_info("texture size: %ix%i\n", tw, th); // TODO: why is this 1024x768? :lolsob:
+
+	vid.target = NULL; // only needed for non-native sizes
+
 	// SDL_SetTextureScaleMode(vid.texture, SDL_ScaleModeNearest);
-	
-	vid.buffer	= SDL_CreateRGBSurfaceFrom(NULL, w,h, FIXED_DEPTH, p, RGBA_MASK_565);
-	vid.screen	= SDL_CreateRGBSurface(SDL_SWSURFACE, w,h, FIXED_DEPTH, RGBA_MASK_565);
-	vid.width	= w;
-	vid.height	= h;
-	vid.pitch	= p;
-	
-	device_width	= w;
-	device_height	= h;
-	device_pitch	= p;
-	
+
+	vid.buffer = SDL_CreateRGBSurfaceFrom(NULL, w, h, FIXED_DEPTH, p, RGBA_MASK_565);
+	vid.screen = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, FIXED_DEPTH, RGBA_MASK_565);
+	vid.width = w;
+	vid.height = h;
+	vid.pitch = p;
+
+	device_width = w;
+	device_height = h;
+	device_pitch = p;
+
 	vid.sharpness = SHARPNESS_SOFT;
-	
+
 	return vid.screen;
 }
 
@@ -188,11 +193,11 @@ SDL_Surface* PLAT_initVideo(void) {
  * Used during shutdown to prevent display artifacts.
  */
 static void clearVideo(void) {
-	for (int i=0; i<3; i++) {
+	for (int i = 0; i < 3; i++) {
 		SDL_RenderClear(vid.renderer);
 		SDL_FillRect(vid.screen, NULL, 0);
 
-		SDL_LockTexture(vid.texture,NULL,&vid.buffer->pixels,&vid.buffer->pitch);
+		SDL_LockTexture(vid.texture, NULL, &vid.buffer->pixels, &vid.buffer->pitch);
 		SDL_FillRect(vid.buffer, NULL, 0);
 		SDL_UnlockTexture(vid.texture);
 		SDL_RenderCopy(vid.renderer, vid.texture, NULL, NULL);
@@ -212,8 +217,10 @@ void PLAT_quitVideo(void) {
 
 	SDL_FreeSurface(vid.screen);
 	SDL_FreeSurface(vid.buffer);
-	if (vid.target) SDL_DestroyTexture(vid.target);
-	if (vid.effect) SDL_DestroyTexture(vid.effect);
+	if (vid.target)
+		SDL_DestroyTexture(vid.target);
+	if (vid.effect)
+		SDL_DestroyTexture(vid.effect);
 	SDL_DestroyTexture(vid.texture);
 	SDL_DestroyRenderer(vid.renderer);
 	SDL_DestroyWindow(vid.window);
@@ -272,37 +279,44 @@ static int hard_scale = 4;
  * @param p Pitch (row stride) in bytes
  */
 static void resizeVideo(int w, int h, int p) {
-	if (w==vid.width && h==vid.height && p==vid.pitch) return;
+	if (w == vid.width && h == vid.height && p == vid.pitch)
+		return;
 
 	// Determine integer upscale factor based on source resolution
-	if (w>=device_width && h>=device_height) hard_scale = 1;
-	else hard_scale = 4;
+	if (w >= device_width && h >= device_height)
+		hard_scale = 1;
+	else
+		hard_scale = 4;
 
-	LOG_info("resizeVideo(%i,%i,%i) hard_scale: %i crisp: %i\n",w,h,p, hard_scale,vid.sharpness==SHARPNESS_CRISP);
+	LOG_info("resizeVideo(%i,%i,%i) hard_scale: %i crisp: %i\n", w, h, p, hard_scale,
+	         vid.sharpness == SHARPNESS_CRISP);
 
 	// Recreate texture at new dimensions
 	SDL_FreeSurface(vid.buffer);
 	SDL_DestroyTexture(vid.texture);
-	if (vid.target) SDL_DestroyTexture(vid.target);
+	if (vid.target)
+		SDL_DestroyTexture(vid.target);
 
 	// Set scaling quality based on sharpness mode
-	SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY, vid.sharpness==SHARPNESS_SOFT?"1":"0", SDL_HINT_OVERRIDE);
-	vid.texture = SDL_CreateTexture(vid.renderer,SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w,h);
+	SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY,
+	                        vid.sharpness == SHARPNESS_SOFT ? "1" : "0", SDL_HINT_OVERRIDE);
+	vid.texture =
+	    SDL_CreateTexture(vid.renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w, h);
 
 	// For crisp rendering, create intermediate target at integer-scaled size
-	if (vid.sharpness==SHARPNESS_CRISP) {
+	if (vid.sharpness == SHARPNESS_CRISP) {
 		SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY, "1", SDL_HINT_OVERRIDE);
-		vid.target = SDL_CreateTexture(vid.renderer,SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_TARGET, w * hard_scale,h * hard_scale);
-	}
-	else {
+		vid.target = SDL_CreateTexture(vid.renderer, SDL_PIXELFORMAT_RGB565,
+		                               SDL_TEXTUREACCESS_TARGET, w * hard_scale, h * hard_scale);
+	} else {
 		vid.target = NULL;
 	}
 
-	vid.buffer	= SDL_CreateRGBSurfaceFrom(NULL, w,h, FIXED_DEPTH, p, RGBA_MASK_565);
+	vid.buffer = SDL_CreateRGBSurfaceFrom(NULL, w, h, FIXED_DEPTH, p, RGBA_MASK_565);
 
-	vid.width	= w;
-	vid.height	= h;
-	vid.pitch	= p;
+	vid.width = w;
+	vid.height = h;
+	vid.pitch = p;
 }
 
 /**
@@ -314,7 +328,7 @@ static void resizeVideo(int w, int h, int p) {
  * @return Screen surface (unchanged)
  */
 SDL_Surface* PLAT_resizeVideo(int w, int h, int p) {
-	resizeVideo(w,h,p);
+	resizeVideo(w, h, p);
 	return vid.screen;
 }
 
@@ -350,11 +364,12 @@ void PLAT_setNearestNeighbor(int enabled) {
  * @param sharpness SHARPNESS_SOFT or SHARPNESS_CRISP
  */
 void PLAT_setSharpness(int sharpness) {
-	if (vid.sharpness==sharpness) return;
+	if (vid.sharpness == sharpness)
+		return;
 	int p = vid.pitch;
-	vid.pitch = 0;  // Force resize
+	vid.pitch = 0; // Force resize
 	vid.sharpness = sharpness;
-	resizeVideo(vid.width,vid.height,p);
+	resizeVideo(vid.width, vid.height, p);
 }
 
 ///////////////////////////////
@@ -368,21 +383,21 @@ void PLAT_setSharpness(int sharpness) {
  * CRT scanlines (line) or pixel grids for retro aesthetic.
  */
 static struct FX_Context {
-	int scale;        // Current scale factor (determines effect size)
-	int type;         // Current effect type (EFFECT_NONE/LINE/GRID)
-	int color;        // Current tint color (RGB565, 0 = no tint)
-	int next_scale;   // Pending scale factor
-	int next_type;    // Pending effect type
-	int next_color;   // Pending tint color
-	int live_type;    // Currently loaded effect type
+	int scale; // Current scale factor (determines effect size)
+	int type; // Current effect type (EFFECT_NONE/LINE/GRID)
+	int color; // Current tint color (RGB565, 0 = no tint)
+	int next_scale; // Pending scale factor
+	int next_type; // Pending effect type
+	int next_color; // Pending tint color
+	int live_type; // Currently loaded effect type
 } effect = {
-	.scale = 1,
-	.next_scale = 1,
-	.type = EFFECT_NONE,
-	.next_type = EFFECT_NONE,
-	.live_type = EFFECT_NONE,
-	.color = 0,
-	.next_color = 0,
+    .scale = 1,
+    .next_scale = 1,
+    .type = EFFECT_NONE,
+    .next_type = EFFECT_NONE,
+    .live_type = EFFECT_NONE,
+    .color = 0,
+    .next_color = 0,
 };
 
 /**
@@ -396,11 +411,11 @@ static struct FX_Context {
  * @param g Output green component (0-255)
  * @param b Output blue component (0-255)
  */
-static void rgb565_to_rgb888(uint32_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
+static void rgb565_to_rgb888(uint32_t rgb565, uint8_t* r, uint8_t* g, uint8_t* b) {
 	// Extract color components from packed RGB565
-	uint8_t red = (rgb565 >> 11) & 0x1F;   // 5 bits
-	uint8_t green = (rgb565 >> 5) & 0x3F;  // 6 bits
-	uint8_t blue = rgb565 & 0x1F;          // 5 bits
+	uint8_t red = (rgb565 >> 11) & 0x1F; // 5 bits
+	uint8_t green = (rgb565 >> 5) & 0x3F; // 6 bits
+	uint8_t blue = rgb565 & 0x1F; // 5 bits
 
 	// Scale to 8-bit range by replicating high bits into low bits
 	*r = (red << 3) | (red >> 2);
@@ -419,7 +434,9 @@ static void rgb565_to_rgb888(uint32_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b
  * Grid effects: Pixel grids simulating LCD/CRT at varying scales (2-11 pixel)
  */
 static void updateEffect(void) {
-	if (effect.next_scale==effect.scale && effect.next_type==effect.type && effect.next_color==effect.color) return;
+	if (effect.next_scale == effect.scale && effect.next_type == effect.type &&
+	    effect.next_color == effect.color)
+		return;
 
 	int live_scale = effect.scale;
 	int live_color = effect.color;
@@ -427,59 +444,49 @@ static void updateEffect(void) {
 	effect.type = effect.next_type;
 	effect.color = effect.next_color;
 
-	if (effect.type==EFFECT_NONE) return;
-	if (effect.type==effect.live_type && effect.scale==live_scale && effect.color==live_color) return;
+	if (effect.type == EFFECT_NONE)
+		return;
+	if (effect.type == effect.live_type && effect.scale == live_scale && effect.color == live_color)
+		return;
 
 	// Select effect image and opacity based on type and scale
-	char* effect_path;
-	int opacity = 128;  // Default 50% opacity (1 - 1/2)
-	if (effect.type==EFFECT_LINE) {
-		if (effect.scale<3) {
+	char* effect_path = NULL;
+	int opacity = 128; // Default 50% opacity (1 - 1/2)
+	if (effect.type == EFFECT_LINE) {
+		if (effect.scale < 3) {
 			effect_path = RES_PATH "/line-2.png";
-		}
-		else if (effect.scale<4) {
+		} else if (effect.scale < 4) {
 			effect_path = RES_PATH "/line-3.png";
-		}
-		else if (effect.scale<5) {
+		} else if (effect.scale < 5) {
 			effect_path = RES_PATH "/line-4.png";
-		}
-		else if (effect.scale<6) {
+		} else if (effect.scale < 6) {
 			effect_path = RES_PATH "/line-5.png";
-		}
-		else if (effect.scale<8) {
+		} else if (effect.scale < 8) {
 			effect_path = RES_PATH "/line-6.png";
-		}
-		else {
+		} else {
 			effect_path = RES_PATH "/line-8.png";
 		}
-	}
-	else if (effect.type==EFFECT_GRID) {
-		if (effect.scale<3) {
+	} else if (effect.type == EFFECT_GRID) {
+		if (effect.scale < 3) {
 			effect_path = RES_PATH "/grid-2.png";
 			opacity = 64; // 1 - 3/4 = 25%
-		}
-		else if (effect.scale<4) {
+		} else if (effect.scale < 4) {
 			effect_path = RES_PATH "/grid-3.png";
 			opacity = 112; // 1 - 5/9 = ~44%
-		}
-		else if (effect.scale<5) {
+		} else if (effect.scale < 5) {
 			effect_path = RES_PATH "/grid-4.png";
 			opacity = 144; // 1 - 7/16 = ~56%
-		}
-		else if (effect.scale<6) {
+		} else if (effect.scale < 6) {
 			effect_path = RES_PATH "/grid-5.png";
 			opacity = 160; // 1 - 9/25 = ~64%
 			// opacity = 96; // TODO: tmp, for white grid
-		}
-		else if (effect.scale<8) {
+		} else if (effect.scale < 8) {
 			effect_path = RES_PATH "/grid-6.png";
 			opacity = 112; // 1 - 5/9 = ~44%
-		}
-		else if (effect.scale<11) {
+		} else if (effect.scale < 11) {
 			effect_path = RES_PATH "/grid-8.png";
 			opacity = 144; // 1 - 7/16 = ~56%
-		}
-		else {
+		} else {
 			effect_path = RES_PATH "/grid-11.png";
 			opacity = 136; // 1 - 57/121 = ~52%
 		}
@@ -489,10 +496,10 @@ static void updateEffect(void) {
 	SDL_Surface* tmp = IMG_Load(effect_path);
 	if (tmp) {
 		// Apply color tinting for grid effects (e.g., DMG green tint)
-		if (effect.type==EFFECT_GRID) {
+		if (effect.type == EFFECT_GRID) {
 			if (effect.color) {
-				uint8_t r,g,b;
-				rgb565_to_rgb888(effect.color,&r,&g,&b);
+				uint8_t r, g, b;
+				rgb565_to_rgb888(effect.color, &r, &g, &b);
 
 				// Tint all non-transparent pixels with the specified color
 				uint32_t* pixels = (uint32_t*)tmp->pixels;
@@ -501,16 +508,18 @@ static void updateEffect(void) {
 				for (int y = 0; y < height; ++y) {
 					for (int x = 0; x < width; ++x) {
 						uint32_t pixel = pixels[y * width + x];
-						uint8_t _,a;
+						uint8_t _, a;
 						SDL_GetRGBA(pixel, tmp->format, &_, &_, &_, &a);
-						if (a) pixels[y * width + x] = SDL_MapRGBA(tmp->format, r,g,b, a);
+						if (a)
+							pixels[y * width + x] = SDL_MapRGBA(tmp->format, r, g, b, a);
 					}
 				}
 			}
 		}
 
 		// Create texture from tinted/untinted surface
-		if (vid.effect) SDL_DestroyTexture(vid.effect);
+		if (vid.effect)
+			SDL_DestroyTexture(vid.effect);
 		vid.effect = SDL_CreateTextureFromSurface(vid.renderer, tmp);
 		SDL_SetTextureAlphaMod(vid.effect, opacity);
 		SDL_FreeSurface(tmp);
@@ -544,7 +553,8 @@ void PLAT_setEffectColor(int next_color) {
  * @param remaining Milliseconds to wait
  */
 void PLAT_vsync(int remaining) {
-	if (remaining>0) SDL_Delay(remaining);
+	if (remaining > 0)
+		SDL_Delay(remaining);
 }
 
 /**
@@ -572,7 +582,7 @@ scaler_t PLAT_getScaler(GFX_Renderer* renderer) {
 void PLAT_blitRenderer(GFX_Renderer* renderer) {
 	vid.blit = renderer;
 	SDL_RenderClear(vid.renderer);
-	resizeVideo(vid.blit->true_w,vid.blit->true_h,vid.blit->src_p);
+	resizeVideo(vid.blit->true_w, vid.blit->true_h, vid.blit->src_p);
 }
 
 /**
@@ -592,20 +602,23 @@ void PLAT_blitRenderer(GFX_Renderer* renderer) {
  * @param ignored Unused parameter
  */
 void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
-
 	// UI rendering path (no active game renderer)
 	if (!vid.blit) {
-		resizeVideo(device_width,device_height,FIXED_PITCH);
-		SDL_UpdateTexture(vid.texture,NULL,vid.screen->pixels,vid.screen->pitch);
+		resizeVideo(device_width, device_height, FIXED_PITCH);
+		SDL_UpdateTexture(vid.texture, NULL, vid.screen->pixels, vid.screen->pitch);
 		// Apply rotation for portrait displays
-		if (rotate) SDL_RenderCopyEx(vid.renderer,vid.texture,NULL,&(SDL_Rect){device_height,0,device_width,device_height},rotate*90,&(SDL_Point){0,0},SDL_FLIP_NONE);
-		else SDL_RenderCopy(vid.renderer, vid.texture, NULL,NULL);
+		if (rotate)
+			SDL_RenderCopyEx(vid.renderer, vid.texture, NULL,
+			                 &(SDL_Rect){device_height, 0, device_width, device_height},
+			                 rotate * 90, &(SDL_Point){0, 0}, SDL_FLIP_NONE);
+		else
+			SDL_RenderCopy(vid.renderer, vid.texture, NULL, NULL);
 		SDL_RenderPresent(vid.renderer);
 		return;
 	}
 
 	// Game rendering path: Update texture with game framebuffer
-	SDL_UpdateTexture(vid.texture,NULL,vid.blit->src,vid.blit->src_p);
+	SDL_UpdateTexture(vid.texture, NULL, vid.blit->src, vid.blit->src_p);
 
 	// For crisp rendering: NN upscale to intermediate target
 	SDL_Texture* target = vid.texture;
@@ -613,10 +626,10 @@ void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
 	int y = vid.blit->src_y;
 	int w = vid.blit->src_w;
 	int h = vid.blit->src_h;
-	if (vid.sharpness==SHARPNESS_CRISP) {
-		SDL_SetRenderTarget(vid.renderer,vid.target);
-		SDL_RenderCopy(vid.renderer, vid.texture, NULL,NULL);
-		SDL_SetRenderTarget(vid.renderer,NULL);
+	if (vid.sharpness == SHARPNESS_CRISP) {
+		SDL_SetRenderTarget(vid.renderer, vid.target);
+		SDL_RenderCopy(vid.renderer, vid.texture, NULL, NULL);
+		SDL_SetRenderTarget(vid.renderer, NULL);
 		// Scale source rect for intermediate target
 		x *= hard_scale;
 		y *= hard_scale;
@@ -626,49 +639,59 @@ void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
 	}
 
 	// Calculate source and destination rectangles
-	SDL_Rect* src_rect = &(SDL_Rect){x,y,w,h};
-	SDL_Rect* dst_rect = &(SDL_Rect){0,0,device_width,device_height};
+	SDL_Rect* src_rect = &(SDL_Rect){x, y, w, h};
+	SDL_Rect* dst_rect = &(SDL_Rect){0, 0, device_width, device_height};
 
 	// Native or cropped aspect ratio (integer scaling, centered)
-	if (vid.blit->aspect==0) {
-		int w = vid.blit->src_w * vid.blit->scale;
-		int h = vid.blit->src_h * vid.blit->scale;
-		int x = (device_width - w) / 2;
-		int y = (device_height - h) / 2;
-		dst_rect->x = x;
-		dst_rect->y = y;
-		dst_rect->w = w;
-		dst_rect->h = h;
+	if (vid.blit->aspect == 0) {
+		int dst_w = vid.blit->src_w * vid.blit->scale;
+		int dst_h = vid.blit->src_h * vid.blit->scale;
+		int dst_x = (device_width - dst_w) / 2;
+		int dst_y = (device_height - dst_h) / 2;
+		dst_rect->x = dst_x;
+		dst_rect->y = dst_y;
+		dst_rect->w = dst_w;
+		dst_rect->h = dst_h;
 	}
 	// Aspect ratio correction (fit to screen, maintain aspect)
-	else if (vid.blit->aspect>0) {
-		int h = device_height;
-		int w = h * vid.blit->aspect;
-		if (w>device_width) {
+	else if (vid.blit->aspect > 0) {
+		int aspect_h = device_height;
+		int aspect_w = aspect_h * vid.blit->aspect;
+		if (aspect_w > device_width) {
 			double ratio = 1 / vid.blit->aspect;
-			w = device_width;
-			h = w * ratio;
+			aspect_w = device_width;
+			aspect_h = aspect_w * ratio;
 		}
-		int x = (device_width - w) / 2;
-		int y = (device_height - h) / 2;
-		dst_rect->x = x;
-		dst_rect->y = y;
-		dst_rect->w = w;
-		dst_rect->h = h;
+		int aspect_x = (device_width - aspect_w) / 2;
+		int aspect_y = (device_height - aspect_h) / 2;
+		dst_rect->x = aspect_x;
+		dst_rect->y = aspect_y;
+		dst_rect->w = aspect_w;
+		dst_rect->h = aspect_h;
 	}
 
 	// Render game output with rotation if needed
-	int ox,oy;
-	oy = (device_width-device_height)/2;
+	int ox, oy;
+	oy = (device_width - device_height) / 2;
 	ox = -oy;
-	if (rotate) SDL_RenderCopyEx(vid.renderer,target,src_rect,&(SDL_Rect){ox+dst_rect->x,oy+dst_rect->y,dst_rect->w,dst_rect->h},rotate*90,NULL,SDL_FLIP_NONE);
-	else SDL_RenderCopy(vid.renderer, target, src_rect, dst_rect);
+	if (rotate)
+		SDL_RenderCopyEx(vid.renderer, target, src_rect,
+		                 &(SDL_Rect){ox + dst_rect->x, oy + dst_rect->y, dst_rect->w, dst_rect->h},
+		                 rotate * 90, NULL, SDL_FLIP_NONE);
+	else
+		SDL_RenderCopy(vid.renderer, target, src_rect, dst_rect);
 
 	// Apply grid/line effect overlay if enabled
 	updateEffect();
-	if (vid.blit && effect.type!=EFFECT_NONE && vid.effect) {
-		if (rotate) SDL_RenderCopyEx(vid.renderer,vid.effect,&(SDL_Rect){0,0,dst_rect->w,dst_rect->h},&(SDL_Rect){ox+dst_rect->x,oy+dst_rect->y,dst_rect->w,dst_rect->h},rotate*90,NULL,SDL_FLIP_NONE);
-		else SDL_RenderCopy(vid.renderer, vid.effect, &(SDL_Rect){0,0,dst_rect->w,dst_rect->h},dst_rect);
+	if (vid.blit && effect.type != EFFECT_NONE && vid.effect) {
+		if (rotate)
+			SDL_RenderCopyEx(
+			    vid.renderer, vid.effect, &(SDL_Rect){0, 0, dst_rect->w, dst_rect->h},
+			    &(SDL_Rect){ox + dst_rect->x, oy + dst_rect->y, dst_rect->w, dst_rect->h},
+			    rotate * 90, NULL, SDL_FLIP_NONE);
+		else
+			SDL_RenderCopy(vid.renderer, vid.effect, &(SDL_Rect){0, 0, dst_rect->w, dst_rect->h},
+			               dst_rect);
 	}
 
 	SDL_RenderPresent(vid.renderer);
@@ -679,12 +702,12 @@ void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
 // Overlay (Status Icons)
 ///////////////////////////////
 
-#define OVERLAY_WIDTH PILL_SIZE     // Unscaled width
-#define OVERLAY_HEIGHT PILL_SIZE    // Unscaled height
-#define OVERLAY_BPP 4               // Bytes per pixel (ARGB32)
-#define OVERLAY_DEPTH 16            // Bit depth
-#define OVERLAY_PITCH (OVERLAY_WIDTH * OVERLAY_BPP)  // Row stride
-#define OVERLAY_RGBA_MASK 0x00ff0000,0x0000ff00,0x000000ff,0xff000000  // ARGB
+#define OVERLAY_WIDTH PILL_SIZE // Unscaled width
+#define OVERLAY_HEIGHT PILL_SIZE // Unscaled height
+#define OVERLAY_BPP 4 // Bytes per pixel (ARGB32)
+#define OVERLAY_DEPTH 16 // Bit depth
+#define OVERLAY_PITCH (OVERLAY_WIDTH * OVERLAY_BPP) // Row stride
+#define OVERLAY_RGBA_MASK 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000 // ARGB
 
 /**
  * Overlay rendering context.
@@ -692,7 +715,7 @@ void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
  * Provides surface for rendering status icons (battery, wifi, etc).
  */
 static struct OVL_Context {
-	SDL_Surface* overlay;  // ARGB surface for status icons
+	SDL_Surface* overlay; // ARGB surface for status icons
 } ovl;
 
 /**
@@ -703,7 +726,8 @@ static struct OVL_Context {
  * @return Overlay surface
  */
 SDL_Surface* PLAT_initOverlay(void) {
-	ovl.overlay = SDL_CreateRGBSurface(SDL_SWSURFACE, SCALE2(OVERLAY_WIDTH,OVERLAY_HEIGHT),OVERLAY_DEPTH,OVERLAY_RGBA_MASK);
+	ovl.overlay = SDL_CreateRGBSurface(SDL_SWSURFACE, SCALE2(OVERLAY_WIDTH, OVERLAY_HEIGHT),
+	                                   OVERLAY_DEPTH, OVERLAY_RGBA_MASK);
 	return ovl.overlay;
 }
 
@@ -711,7 +735,8 @@ SDL_Surface* PLAT_initOverlay(void) {
  * Cleans up overlay resources.
  */
 void PLAT_quitOverlay(void) {
-	if (ovl.overlay) SDL_FreeSurface(ovl.overlay);
+	if (ovl.overlay)
+		SDL_FreeSurface(ovl.overlay);
 }
 
 /**
@@ -750,16 +775,22 @@ void PLAT_getBatteryStatus(int* is_charging, int* charge) {
 
 	// Read battery capacity and round to nearest 20%
 	int i = getInt("/sys/class/power_supply/axp2202-battery/capacity");
-	     if (i>80) *charge = 100;
-	else if (i>60) *charge =  80;
-	else if (i>40) *charge =  60;
-	else if (i>20) *charge =  40;
-	else if (i>10) *charge =  20;
-	else           *charge =  10;
+	if (i > 80)
+		*charge = 100;
+	else if (i > 60)
+		*charge = 80;
+	else if (i > 40)
+		*charge = 60;
+	else if (i > 20)
+		*charge = 40;
+	else if (i > 10)
+		*charge = 20;
+	else
+		*charge = 10;
 
 	// Update WiFi status (polled here to avoid separate polling loop)
 	char status[16];
-	getFile("/sys/class/net/wlan0/operstate", status,16);
+	getFile("/sys/class/net/wlan0/operstate", status, 16);
 	online = prefixMatch("up", status);
 }
 
@@ -776,13 +807,12 @@ void PLAT_getBatteryStatus(int* is_charging, int* charge) {
 void PLAT_enableBacklight(int enable) {
 	if (enable) {
 		SetBrightness(GetBrightness());
-		system("bl_enable");  // Platform-specific backlight enable script
-		putInt(BLANK_PATH,FB_BLANK_UNBLANK);
-	}
-	else {
+		system("bl_enable"); // Platform-specific backlight enable script
+		putInt(BLANK_PATH, FB_BLANK_UNBLANK);
+	} else {
 		SetRawBrightness(0);
-		system("bl_disable");  // Platform-specific backlight disable script
-		putInt(BLANK_PATH,FB_BLANK_POWERDOWN);
+		system("bl_disable"); // Platform-specific backlight disable script
+		putInt(BLANK_PATH, FB_BLANK_POWERDOWN);
 	}
 }
 
@@ -832,10 +862,18 @@ void PLAT_powerOff(void) {
 void PLAT_setCPUSpeed(int speed) {
 	int freq = 0;
 	switch (speed) {
-		case CPU_SPEED_MENU: 		freq =  600000; break;
-		case CPU_SPEED_POWERSAVE:	freq =  816000; break;
-		case CPU_SPEED_NORMAL: 		freq = 1416000; break;
-		case CPU_SPEED_PERFORMANCE: freq = 1800000; break;
+	case CPU_SPEED_MENU:
+		freq = 600000;
+		break;
+	case CPU_SPEED_POWERSAVE:
+		freq = 816000;
+		break;
+	case CPU_SPEED_NORMAL:
+		freq = 1416000;
+		break;
+	case CPU_SPEED_PERFORMANCE:
+		freq = 1800000;
+		break;
 	}
 	putInt(GOVERNOR_PATH, freq);
 }

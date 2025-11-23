@@ -1,6 +1,6 @@
 # LessUI Cores
 
-How libretro cores work in LessUI - their organization, build system, runtime loading, and platform differences.
+How libretro cores work in LessUI - their organization, distribution, runtime loading, and platform differences.
 
 ## What Are Cores?
 
@@ -10,235 +10,114 @@ LessUI uses **libretro cores** to emulate different gaming systems. Libretro is 
 
 **Frontend**: MinArch loads cores dynamically and provides video/audio/input services
 
-**Platform Abstraction**: Same cores run on all devices with platform-specific compilation flags
+**Platform Abstraction**: Same cores run on all devices with architecture-specific compilation
 
 **Configuration**: Each emulator is packaged as a `.pak` directory with launch scripts and defaults
 
-## Stock Cores
+## Core Distribution
 
-All platforms ship with these 6 cores in `SYSTEM/<platform>/cores/`:
+Cores are **built externally** in the [minarch-cores repository](https://github.com/nchapman/minarch-cores) and distributed as pre-compiled binaries via GitHub releases.
 
-| Core | Systems | Extensions |
-|------|---------|------------|
-| fceumm | Nintendo Entertainment System | `.nes`, `.fds`, `.unf` |
-| gambatte | Game Boy / Game Boy Color | `.gb`, `.gbc`, `.dmg` |
-| gpsp | Game Boy Advance | `.gba` |
-| picodrive | Sega Genesis, Sega CD, 32X | `.md`, `.bin`, `.smd`, `.gen` |
-| snes9x2005_plus | Super Nintendo | `.smc`, `.sfc`, `.swc`, `.fig` |
-| pcsx_rearmed | PlayStation | `.cue`, `.m3u`, `.pbp`, `.chd` |
+### Architecture-Based Distribution
 
-## Extra Cores
+Cores are compiled for two ARM architectures:
 
-These 7 additional cores can be installed from `EXTRAS/Emus/`:
+- **ARM Cortex-A7** (`linux-cortex-a7.zip`) - 32-bit platforms
+- **ARM Cortex-A53** (`linux-cortex-a53.zip`) - 64-bit platforms
+
+All platforms using the same CPU architecture share the same core binaries.
+
+### Build System Integration
+
+The main LessUI Makefile downloads cores during the build:
+
+```makefile
+# Pre-built cores from minarch-cores repository (nightly builds)
+MINARCH_CORES_VERSION ?= nightly
+CORES_BASE = https://github.com/nchapman/minarch-cores/releases/download/$(MINARCH_CORES_VERSION)
+
+cores-download:
+	@mkdir -p build/.system/cores/a7 build/.system/cores/a53
+	@curl -sL $(CORES_BASE)/linux-cortex-a7.zip -o /tmp/lessui-cores-a7.zip
+	@unzip -o -j -q /tmp/lessui-cores-a7.zip -d build/.system/cores/a7
+	@curl -sL $(CORES_BASE)/linux-cortex-a53.zip -o /tmp/lessui-cores-a53.zip
+	@unzip -o -j -q /tmp/lessui-cores-a53.zip -d build/.system/cores/a53
+```
+
+### Local Override (Development)
+
+For testing custom cores, place override zips in `workspace/cores-override/`:
+
+```bash
+cp ~/Downloads/linux-cortex-a7.zip workspace/cores-override/
+make all  # Uses local zip instead of downloading
+```
+
+See `workspace/cores-override/README.md` for details.
+
+## Available Cores
+
+LessUI ships with 43 emulator cores covering systems from the NES to PlayStation:
 
 | Core | System | Extensions |
 |------|--------|------------|
+| fceumm | Nintendo Entertainment System | `.nes`, `.fds`, `.unf` |
+| gambatte | Game Boy / Game Boy Color | `.gb`, `.gbc`, `.dmg` |
+| gpsp | Game Boy Advance | `.gba` |
 | mgba | Game Boy Advance (cycle-accurate) | `.gba` |
-| fake-08 | PICO-8 | `.p8`, `.p8.png` |
+| picodrive | Sega Genesis, Sega CD, 32X | `.md`, `.bin`, `.smd`, `.gen`, `.cue` |
+| snes9x2005_plus | Super Nintendo | `.smc`, `.sfc`, `.swc`, `.fig` |
+| mednafen_supafaust | Super Nintendo (accuracy) | `.sfc`, `.smc` |
+| pcsx_rearmed | PlayStation | `.cue`, `.m3u`, `.pbp`, `.chd` |
 | mednafen_pce_fast | TurboGrafx-16 / PC Engine | `.pce`, `.cue` |
 | pokemini | Pokémon Mini | `.min` |
 | race | Neo Geo Pocket / Neo Geo Pocket Color | `.ngp`, `.ngc` |
-| mednafen_supafaust | Super Nintendo (accuracy) | `.sfc`, `.smc` |
 | mednafen_vb | Virtual Boy | `.vb` |
+| fake-08 | PICO-8 | `.p8`, `.p8.png` |
+| ... | *(see minarch-cores for full list)* | |
+
+All cores are included in the base install via the pak template system.
 
 ## Directory Organization
 
-Each platform has its own cores directory with a consistent structure:
+### On-Device Structure
+
+Cores are stored in architecture-specific directories on the SD card:
 
 ```
-workspace/<platform>/cores/
-├── makefile              # Platform-specific core list and build config
-├── patches/              # Platform-specific patches for cores
-│   ├── gpsp.patch       # Adds platform definition to core's Makefile
-│   ├── gambatte.patch
-│   ├── fceumm.patch
+/mnt/SDCARD/.system/cores/
+├── a7/                         # ARM Cortex-A7 cores (32-bit)
+│   ├── fceumm_libretro.so
+│   ├── gambatte_libretro.so
+│   ├── gpsp_libretro.so
 │   └── ...
-├── src/                  # Git clones of libretro core repositories (gitignored)
-│   ├── fceumm/
-│   ├── gambatte/
-│   ├── gpsp/
-│   └── ...
-└── output/               # Compiled .so files (gitignored)
+└── a53/                        # ARM Cortex-A53+ cores (64-bit)
     ├── fceumm_libretro.so
     ├── gambatte_libretro.so
+    ├── gpsp_libretro.so
     └── ...
 ```
 
-## Platform Differences
+### Build Output
 
-Different platforms build different sets of cores:
-
-**Miyoo Mini** - 13 cores:
-```makefile
-CORES = fceumm gambatte gpsp pcsx_rearmed picodrive snes9x2005_plus
-CORES+= mednafen_pce_fast mednafen_vb fake-08 mednafen_supafaust mgba pokemini race
-```
-
-**Trimui Smart** - 12 cores (fake-08 commented out by default):
-```makefile
-CORES = fceumm gambatte gpsp pcsx_rearmed picodrive snes9x2005_plus
-CORES+= mednafen_pce_fast mednafen_vb mgba pokemini race mednafen_supafaust
-```
-
-**RG35XX Plus** - Reuses cores from RG35XX:
-```makefile
-# Uses cores from rg35xx to reduce build time
-copy:
-	cp -R ../rg35xx/cores/output ./
-```
-**Strategy**: Reuses cores from base platform variant
-
-### Shared Patches
-
-In addition to platform-specific patches, there are shared patches that apply to all platforms:
+During LessUI build, cores are downloaded to:
 
 ```
-workspace/all/cores/patches/
-└── gambatte/
-    └── 001-export-dmg-grid-color-on-change.patch
+build/.system/cores/
+├── a7/*.so                     # Copied to all 32-bit platforms
+└── a53/*.so                    # Copied to all 64-bit platforms
 ```
 
-These patches add LessUI-specific features (like DMG palette color export for color palettes).
-
----
-
-## Build System
-
-### Two-Tier Makefile Architecture
-
-LessUI uses a templated build system with platform-specific and shared components:
-
-#### 1. Platform-Specific Makefile
-
-Location: `workspace/<platform>/cores/makefile`
+The package target copies the appropriate architecture's cores to each platform:
 
 ```makefile
-# Define which cores to build for this platform
-CORES = fceumm gambatte gpsp pcsx_rearmed picodrive snes9x2005_plus
-CORES+= mednafen_pce_fast mednafen_vb fake-08 mednafen_supafaust mgba pokemini race
-
-# Optional per-core configuration
-
-# Override repository URL
-mednafen_pce_fast_REPO = https://github.com/libretro/beetle-pce-fast-libretro
-mednafen_vb_REPO = https://github.com/libretro/beetle-vb-libretro
-
-# Override output filename
-fake-08_REPO = https://github.com/jtothebell/fake-08
-fake-08_CORE = fake08_libretro.so
-
-# Override build directory
-fake-08_BUILD_PATH = fake-08/platform/libretro
-
-# Specify custom makefile
-pcsx_rearmed_MAKEFILE = Makefile.libretro
-
-# Add build flags
-snes9x2005_plus_FLAGS = USE_BLARGG_APU=1
-
-# Include shared build logic
-include ../../all/cores/makefile
+# Platform determines which architecture to use
+ifeq ($(CORES_ARCH),a7)
+    cp -R ./build/.system/cores/a7 ./build/PAYLOAD/.system/cores/
+else
+    cp -R ./build/.system/cores/a53 ./build/PAYLOAD/.system/cores/
+endif
 ```
-
-#### 2. Shared Makefile Template
-
-Location: `workspace/all/cores/makefile`
-
-This file implements the actual build logic using Make's template system:
-
-```makefile
-# Template for building each core
-define TEMPLATE=
-# Default repository URL (can be overridden)
-$1_REPO ?= https://github.com/libretro/$(1)
-
-# Build command with platform flag
-$1_MAKE ?= make $$(and $$($1_MAKEFILE),-f $$($1_MAKEFILE)) \
-    platform=$(PLATFORM) $$($(1)_FLAGS)
-
-# Clone repository
-src/$(1):
-	git clone $$(if $$($1_HASH),,--depth 1) --recursive $$($1_REPO) $(1)
-
-# Apply platform-specific patch
-src/$(1)/.patched: src/$(1)
-	cd src/$(1) && $(PATCH) -p1 < ../../patches/$(1).patch && touch .patched
-
-# Apply shared patches (from workspace/all/cores/patches/)
-src/$(1)/.patched-all: src/$(1)
-	cd src/$(1) && $$(foreach patch, $$(wildcard ../../all/cores/patches/$(1)/*.patch), \
-		$(PATCH) -p1 < ../../$$(patch) &&) touch .patched-all
-
-# Build core
-output/$(1)_libretro.so: src/$(1)/.patched src/$(1)/.patched-all
-	cd src/$$($1_BUILD_PATH) && $$($1_MAKE) $(PROCS)
-	mv src/$$($1_BUILD_PATH)/$$(if $$($(1)_CORE),$$($(1)_CORE),$(1)_libretro.so) ./output
-endef
-
-# Generate build targets for all cores
-$(foreach CORE,$(CORES),$(eval $(call TEMPLATE,$(CORE))))
-```
-
-### Build Process
-
-The build process follows these steps:
-
-1. **Clone** upstream libretro core repository
-2. **Apply platform-specific patch** (adds platform definition to core's Makefile)
-3. **Apply shared patches** (LessUI-specific features)
-4. **Cross-compile** using Docker toolchain with `platform=<platform>` flag
-5. **Copy** compiled `.so` file to `output/` directory
-
-Example build command:
-```bash
-# Enter platform build environment
-make PLATFORM=miyoomini shell
-
-# Inside Docker container, build all cores
-cd /root/workspace/miyoomini/cores
-make
-
-# Build specific core
-make output/gambatte_libretro.so
-```
-
-### Patching System
-
-Patches serve two purposes:
-
-#### Platform-Specific Patches
-
-These add platform definitions to each core's Makefile. Example from `miyoomini/cores/patches/gpsp.patch`:
-
-```diff
-+# MIYOOMINI
-+else ifeq ($(platform), miyoomini)
-+    TARGET := $(TARGET_NAME)_libretro.so
-+    CC = $(CROSS_COMPILE)gcc
-+    CXX = $(CROSS_COMPILE)g++
-+    CFLAGS += -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
-+    HAVE_NEON = 1
-+    MMAP_JIT_CACHE = 1
-+    HAVE_DYNAREC = 1
-```
-
-This tells the core:
-- What compiler to use (`CROSS_COMPILE` is set by Docker environment)
-- What CPU optimizations to enable (NEON, ARM v7, hard float)
-- What features to enable (dynarec, JIT cache)
-
-#### Shared Patches
-
-These add LessUI-specific features across all platforms. Example: `workspace/all/cores/patches/gambatte/001-export-dmg-grid-color-on-change.patch` adds support for exporting palette color changes for color palette swapping.
-
-### Cross-Compilation Toolchain
-
-- **Docker-based**: Each platform has a Docker image with ARM cross-compilation toolchain
-- **Compiler**: Uses `CROSS_COMPILE` environment variable (e.g., `arm-linux-gnueabihf-gcc`)
-- **Platform flag**: Cores are built with `platform=<platform>` Make variable
-- **Optimization**: Platform-specific compiler flags in patches enable hardware features
-
----
 
 ## Runtime Core Loading
 
@@ -390,8 +269,6 @@ Core_close() {
 }
 ```
 
----
-
 ## Configuration System
 
 ### .pak Directory Structure
@@ -404,13 +281,11 @@ GB.pak/
 └── default.cfg     # Default core options and input mappings
 ```
 
-These directories live in:
-- **Stock emulators**: `SYSTEM/<platform>/paks/Emus/GB.pak/`
-- **Extra emulators**: `EXTRAS/Emus/<platform>/GB.pak/`
+These directories are generated from templates in `skeleton/TEMPLATES/minarch-paks/` during the build process. See `docs/PAK-TEMPLATES.md` for details.
 
 ### Launch Script
 
-Example: `GB.pak/launch.sh`
+Example: `GB.pak/launch.sh` (generated from template)
 
 ```bash
 #!/bin/sh
@@ -488,40 +363,7 @@ MinArch uses a three-tier configuration system:
    - Saved per-game or globally
    - Takes precedence over all defaults
 
----
-
 ## Platform Differences
-
-### Build-Time Differences
-
-Different platforms use different CPU optimization flags in their patches:
-
-**Miyoo Mini** (Cortex-A7, NEON):
-```makefile
-CFLAGS += -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -march=armv7ve
-```
-
-**Trimui Smart** (Cortex-A7, NEON):
-```makefile
-CFLAGS += -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -mcpu=cortex-a7
-```
-(Note: Uses `-mcpu` instead of `-march` - slightly different approach)
-
-**RGB30** (Different SoC):
-- May use different ARM optimization flags
-- May have different hardware accelerations available
-
-### Core Selection Differences
-
-**Stock cores** (6 cores across all platforms):
-- fceumm, gambatte, gpsp, picodrive, snes9x2005_plus, pcsx_rearmed
-- Installed by default in `SYSTEM/<platform>/cores/`
-
-**Extra cores** (varies by platform):
-- Most platforms: 7 extra cores (mgba, fake-08, mednafen_pce_fast, pokemini, race, mednafen_supafaust, mednafen_vb)
-- Some platforms exclude certain cores:
-  - Trimui Smart: Comments out fake-08 by default
-  - GKD Pixel: Skips fake-08 entirely
 
 ### Runtime Path Differences
 
@@ -550,8 +392,6 @@ All paths are constructed from environment variables, allowing the same SD card 
 ```
 
 **Result**: Insert the same SD card in a Miyoo Mini or RGB30, and it "just works" - each device uses its own binaries but shares your games, saves, and save states!
-
----
 
 ## Libretro API Integration
 
@@ -724,19 +564,14 @@ static bool environment_callback(unsigned cmd, void* data) {
    - Skips video refresh callback for intermediate frames
    - Plays audio at accelerated rate
 
----
-
 ## Key Files Reference
 
-### Build System
+### Core Distribution
 
 | File | Purpose |
 |------|---------|
-| `Makefile` | Main orchestration makefile |
-| `workspace/all/cores/makefile` | Shared core build logic (templated) |
-| `workspace/<platform>/cores/makefile` | Platform-specific core list and overrides |
-| `workspace/<platform>/cores/patches/*.patch` | Platform-specific patches for cores |
-| `workspace/all/cores/patches/<core>/*.patch` | Shared patches across all platforms |
+| `Makefile` | Main orchestration makefile, includes `cores-download` target |
+| `workspace/cores-override/` | Local override directory for development |
 
 ### Core Loading and Management
 
@@ -757,8 +592,8 @@ static bool environment_callback(unsigned cmd, void* data) {
 
 | File | Purpose |
 |------|---------|
-| `skeleton/SYSTEM/<platform>/paks/Emus/<tag>.pak/launch.sh` | Launch script for emulator |
-| `skeleton/SYSTEM/<platform>/paks/Emus/<tag>.pak/default.cfg` | Default options and bindings |
+| `skeleton/TEMPLATES/minarch-paks/launch.sh.template` | Launch script template for all emulators |
+| `skeleton/TEMPLATES/minarch-paks/configs/<core>.cfg` | Default options and bindings per core |
 | `skeleton/SYSTEM/<platform>/system.cfg` | System-wide frontend defaults |
 
 ### Utilities
@@ -777,60 +612,20 @@ static bool environment_callback(unsigned cmd, void* data) {
 
 ## Adding a Core to LessUI
 
-Quick steps for adding a new core to the official LessUI distribution:
+Since cores are built externally, adding a core to LessUI involves:
 
-1. **Decide placement** - Stock (base install) or extras (optional download)
-2. **Add to platform makefiles** - Edit `workspace/<platform>/cores/makefile`
-   - Add core name to `CORES` list
-   - Set repo URL, build path, or flags if non-standard
-3. **Create platform patches** - Add `workspace/<platform>/cores/patches/<core>.patch`
-   - Adds platform definition to core's Makefile
-   - Sets compiler flags (CPU, NEON, dynarec, etc.)
-4. **Build and test** - Use Docker to compile for each platform
-   - `make PLATFORM=<platform> shell` then `cd cores && make`
-   - Verify core builds without errors
-5. **Add to skeleton** - Create `.pak` in `skeleton/SYSTEM/<platform>/paks/Emus/` (stock) or `skeleton/EXTRAS/Emus/` (optional)
-   - `launch.sh` - Launches minarch with core
-   - `default.cfg` - Core options and input bindings
-6. **Test on hardware** - Verify save states, auto-resume, and in-game menu work correctly
-7. **Repeat for other platforms** - Each platform needs patches and paks
+1. **Add to minarch-cores** - Core must be built in the external minarch-cores repository
+2. **Create pak template** - Add core configuration to `skeleton/TEMPLATES/minarch-paks/cores.json`
+3. **Add core config** - Create `skeleton/TEMPLATES/minarch-paks/configs/<core>.cfg`
+4. **Generate paks** - Run `./scripts/generate-paks.sh all` to create platform paks
+5. **Test** - Verify core loads, save states work, and in-game menu functions correctly
 
-Core quality matters: Cores should reliably support save states, have acceptable performance, and integrate cleanly with LessUI's features (auto-resume, in-game menu, consistent behavior).
-
-## Potential Improvements
-
-Some areas that could be simplified or improved:
-
-**Build System**
-- Templated makefile system is powerful but hard to debug
-- Maintaining patches for 13+ cores across platforms is tedious
-- Upstream libretro changes can break patches
-- Could use wrapper makefiles or build scripts instead
-
-**Core Discovery**
-- Hardcoded lists in platform makefiles
-- Could auto-discover cores or use metadata files
-
-**Configuration**
-- Three-tier system works but could be more explicit
-- Better validation and error reporting would help
-
-**Environment Callback**
-- Large switch statement (440 lines in `minarch.c:2241-2680`)
-- Could split into separate handler functions
-
-**Core Metadata**
-- Extracted from core at runtime
-- Pre-generating could speed up startup
-
-**Multi-Core Support**
-- Some systems have multiple cores (e.g., mgba vs gpsp for GBA)
-- Currently requires duplicate .pak directories
-- Could use a core selection system
+See `docs/PAK-TEMPLATES.md` for comprehensive pak generation documentation.
 
 ## Resources
 
 - [Architecture Guide](ARCHITECTURE.md) - How LessUI works internally
 - [Development Guide](DEVELOPMENT.md) - Building and testing
-- [Pak Development](PAKS.md) - Creating custom emulator paks
+- [Pak Templates](PAK-TEMPLATES.md) - Pak generation system
+- [minarch-cores Repository](https://github.com/nchapman/minarch-cores) - Core build system
 - [CLAUDE.md](../CLAUDE.md) - Comprehensive technical reference

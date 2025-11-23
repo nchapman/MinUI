@@ -16,15 +16,15 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <errno.h>
 
 #include "msettings.h"
 
+#include "api.h"
 #include "defines.h"
 #include "platform.h"
-#include "api.h"
 #include "utils.h"
 
 #include "scaler.h"
@@ -33,31 +33,41 @@
 // Settings (stub implementations for development)
 ///////////////////////////////
 
-void InitSettings(void){}
-void QuitSettings(void){}
+void InitSettings(void) {}
+void QuitSettings(void) {}
 
-int GetBrightness(void) { return 0; }
-int GetVolume(void) { return 0; }
+int GetBrightness(void) {
+	return 0;
+}
+int GetVolume(void) {
+	return 0;
+}
 
 void SetRawBrightness(int value) {}
-void SetRawVolume(int value){}
+void SetRawVolume(int value) {}
 
 void SetBrightness(int value) {}
 void SetVolume(int value) {}
 
-int GetJack(void) { return 0; }
+int GetJack(void) {
+	return 0;
+}
 void SetJack(int value) {}
 
-int GetHDMI(void) { return 0; }
+int GetHDMI(void) {
+	return 0;
+}
 void SetHDMI(int value) {}
 
-int GetMute(void) { return 0; }
+int GetMute(void) {
+	return 0;
+}
 
 ///////////////////////////////
 // Input
 ///////////////////////////////
 
-static SDL_Joystick *joystick;
+static SDL_Joystick* joystick;
 
 /**
  * Initializes SDL2 joystick subsystem for development input.
@@ -85,9 +95,9 @@ static struct VID_Context {
 	SDL_Texture* texture;
 	SDL_Surface* buffer;
 	SDL_Surface* screen;
-	
+
 	GFX_Renderer* blit; // yeesh
-	
+
 	int width;
 	int height;
 	int pitch;
@@ -132,44 +142,48 @@ SDL_Surface* PLAT_initVideo(void) {
 	SDL_GetCurrentDisplayMode(0, &mode);
 	// Rotate display to simulate vertical handheld (disabled for macOS)
 	rotate = 0;
-	LOG_info("Current display mode: %ix%i (%s)\n", mode.w,mode.h, SDL_GetPixelFormatName(mode.format));
-	
-	// Use DEV_SCREEN_* if set (for aspect ratio switching), otherwise use FIXED_*
-	#ifdef DEV_SCREEN_WIDTH
-		int w = DEV_SCREEN_WIDTH;
-	#else
-		int w = FIXED_WIDTH;
-	#endif
-	#ifdef DEV_SCREEN_HEIGHT
-		int h = DEV_SCREEN_HEIGHT;
-	#else
-		int h = FIXED_HEIGHT;
-	#endif
-	int p = w * FIXED_BPP;  // Calculate pitch from width
+	LOG_info("Current display mode: %ix%i (%s)\n", mode.w, mode.h,
+	         SDL_GetPixelFormatName(mode.format));
+
+// Use DEV_SCREEN_* if set (for aspect ratio switching), otherwise use FIXED_*
+#ifdef DEV_SCREEN_WIDTH
+	int w = DEV_SCREEN_WIDTH;
+#else
+	int w = FIXED_WIDTH;
+#endif
+#ifdef DEV_SCREEN_HEIGHT
+	int h = DEV_SCREEN_HEIGHT;
+#else
+	int h = FIXED_HEIGHT;
+#endif
+	int p = w * FIXED_BPP; // Calculate pitch from width
 	// Create window with normal dimensions (w,h) - no rotation on macOS
-	vid.window   = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w,h, SDL_WINDOW_SHOWN);
-	vid.renderer = SDL_CreateRenderer(vid.window,-1,SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
-	
+	vid.window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h,
+	                              SDL_WINDOW_SHOWN);
+	vid.renderer =
+	    SDL_CreateRenderer(vid.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
 	// SDL_RendererInfo info;
 	// SDL_GetRendererInfo(vid.renderer, &info);
 	// LOG_info("Current render driver: %s\n", info.name);
-	
-	vid.texture = SDL_CreateTexture(vid.renderer,SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w,h);
-	
+
+	vid.texture =
+	    SDL_CreateTexture(vid.renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w, h);
+
 	// SDL_SetTextureScaleMode(vid.texture, SDL_ScaleModeNearest);
-	
-	vid.buffer	= SDL_CreateRGBSurfaceFrom(NULL, w,h, FIXED_DEPTH, p, RGBA_MASK_565);
-	vid.screen	= SDL_CreateRGBSurface(SDL_SWSURFACE, w,h, FIXED_DEPTH, RGBA_MASK_565);
-	vid.width	= w;
-	vid.height	= h;
-	vid.pitch	= p;
-	
+
+	vid.buffer = SDL_CreateRGBSurfaceFrom(NULL, w, h, FIXED_DEPTH, p, RGBA_MASK_565);
+	vid.screen = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, FIXED_DEPTH, RGBA_MASK_565);
+	vid.width = w;
+	vid.height = h;
+	vid.pitch = p;
+
 	PWR_disablePowerOff();
-	
-	device_width	= w;
-	device_height	= h;
-	device_pitch	= p;
-	
+
+	device_width = w;
+	device_height = h;
+	device_pitch = p;
+
 	return vid.screen;
 }
 
@@ -179,11 +193,11 @@ SDL_Surface* PLAT_initVideo(void) {
  * Presents three black frames to ensure complete screen clear.
  */
 static void clearVideo(void) {
-	for (int i=0; i<3; i++) {
+	for (int i = 0; i < 3; i++) {
 		SDL_RenderClear(vid.renderer);
 		SDL_FillRect(vid.screen, NULL, 0);
 
-		SDL_LockTexture(vid.texture,NULL,&vid.buffer->pixels,&vid.buffer->pitch);
+		SDL_LockTexture(vid.texture, NULL, &vid.buffer->pixels, &vid.buffer->pitch);
 		SDL_FillRect(vid.buffer, NULL, 0);
 		SDL_UnlockTexture(vid.texture);
 		SDL_RenderCopy(vid.renderer, vid.texture, NULL, NULL);
@@ -215,9 +229,7 @@ void PLAT_clearAll(void) {
 	SDL_RenderClear(vid.renderer);
 }
 
-void PLAT_setVsync(int vsync) {
-	
-}
+void PLAT_setVsync(int vsync) {}
 
 /**
  * Resizes video buffer and texture to new dimensions.
@@ -230,32 +242,32 @@ void PLAT_setVsync(int vsync) {
  * @param p New pitch in bytes
  */
 static void resizeVideo(int w, int h, int p) {
-	if (w==vid.width && h==vid.height && p==vid.pitch) return;
+	if (w == vid.width && h == vid.height && p == vid.pitch)
+		return;
 
-	LOG_info("resizeVideo(%i,%i,%i)\n",w,h,p);
+	LOG_info("resizeVideo(%i,%i,%i)\n", w, h, p);
 
 	SDL_FreeSurface(vid.buffer);
 	SDL_DestroyTexture(vid.texture);
 	// PLAT_clearVideo(vid.screen);
 
-	vid.texture = SDL_CreateTexture(vid.renderer,SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w,h);
+	vid.texture =
+	    SDL_CreateTexture(vid.renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, w, h);
 	// SDL_SetTextureScaleMode(vid.texture, SDL_ScaleModeNearest);
 
-	vid.buffer	= SDL_CreateRGBSurfaceFrom(NULL, w,h, FIXED_DEPTH, p, RGBA_MASK_565);
+	vid.buffer = SDL_CreateRGBSurfaceFrom(NULL, w, h, FIXED_DEPTH, p, RGBA_MASK_565);
 
-	vid.width	= w;
-	vid.height	= h;
-	vid.pitch	= p;
+	vid.width = w;
+	vid.height = h;
+	vid.pitch = p;
 }
 
 SDL_Surface* PLAT_resizeVideo(int w, int h, int p) {
-	resizeVideo(w,h,p);
+	resizeVideo(w, h, p);
 	return vid.screen;
 }
 
-void PLAT_setVideoScaleClip(int x, int y, int width, int height) {
-	
-}
+void PLAT_setVideoScaleClip(int x, int y, int width, int height) {}
 void PLAT_setNearestNeighbor(int enabled) {
 	// always enabled?
 }
@@ -263,7 +275,8 @@ void PLAT_setSharpness(int sharpness) {
 	// buh
 }
 void PLAT_vsync(int remaining) {
-	if (remaining>0) SDL_Delay(remaining);
+	if (remaining > 0)
+		SDL_Delay(remaining);
 }
 
 scaler_t PLAT_getScaler(GFX_Renderer* renderer) {
@@ -273,12 +286,10 @@ scaler_t PLAT_getScaler(GFX_Renderer* renderer) {
 void PLAT_blitRenderer(GFX_Renderer* renderer) {
 	vid.blit = renderer;
 	SDL_RenderClear(vid.renderer);
-	resizeVideo(vid.blit->true_w,vid.blit->true_h,vid.blit->src_p);
-	scale1x1_c16(
-		renderer->src,renderer->dst,
-		renderer->true_w,renderer->true_h,renderer->src_p,
-		vid.screen->w,vid.screen->h,vid.screen->pitch // fixed in this implementation
-		// renderer->dst_w,renderer->dst_h,renderer->dst_p
+	resizeVideo(vid.blit->true_w, vid.blit->true_h, vid.blit->src_p);
+	scale1x1_c16(renderer->src, renderer->dst, renderer->true_w, renderer->true_h, renderer->src_p,
+	             vid.screen->w, vid.screen->h, vid.screen->pitch // fixed in this implementation
+	             // renderer->dst_w,renderer->dst_h,renderer->dst_p
 	);
 }
 
@@ -295,25 +306,26 @@ void PLAT_blitRenderer(GFX_Renderer* renderer) {
  * @param ignored Unused integer parameter
  */
 void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
-
 	if (!vid.blit) {
-		resizeVideo(device_width,device_height,FIXED_PITCH); // !!!???
-		SDL_UpdateTexture(vid.texture,NULL,vid.screen->pixels,vid.screen->pitch);
+		resizeVideo(device_width, device_height, FIXED_PITCH); // !!!???
+		SDL_UpdateTexture(vid.texture, NULL, vid.screen->pixels, vid.screen->pitch);
 		if (rotate) {
 			LOG_info("rotated\n");
-			SDL_RenderCopyEx(vid.renderer,vid.texture,NULL,&(SDL_Rect){device_height,0,device_width,device_height},rotate*90,&(SDL_Point){0,0},SDL_FLIP_NONE);
-		}
-		else {
+			SDL_RenderCopyEx(vid.renderer, vid.texture, NULL,
+			                 &(SDL_Rect){device_height, 0, device_width, device_height},
+			                 rotate * 90, &(SDL_Point){0, 0}, SDL_FLIP_NONE);
+		} else {
 			LOG_info("not rotated\n");
-			SDL_RenderCopy(vid.renderer, vid.texture, NULL,NULL);
+			SDL_RenderCopy(vid.renderer, vid.texture, NULL, NULL);
 		}
 		SDL_RenderPresent(vid.renderer);
 		return;
 	}
 
-	if (!vid.blit) resizeVideo(FIXED_WIDTH,FIXED_HEIGHT,FIXED_PITCH); // !!!???
+	if (!vid.blit)
+		resizeVideo(FIXED_WIDTH, FIXED_HEIGHT, FIXED_PITCH); // !!!???
 
-	SDL_LockTexture(vid.texture,NULL,&vid.buffer->pixels,&vid.buffer->pitch);
+	SDL_LockTexture(vid.texture, NULL, &vid.buffer->pixels, &vid.buffer->pitch);
 	SDL_BlitSurface(vid.screen, NULL, vid.buffer, NULL);
 	SDL_UnlockTexture(vid.texture);
 
@@ -329,7 +341,7 @@ void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
 		src_rect = &src_r;
 
 		// Calculate destination rectangle based on aspect ratio mode
-		if (vid.blit->aspect==0) { // native (or cropped?)
+		if (vid.blit->aspect == 0) { // native (or cropped?)
 			int w = vid.blit->src_w * vid.blit->scale;
 			int h = vid.blit->src_h * vid.blit->scale;
 			int x = (FIXED_WIDTH - w) / 2;
@@ -340,11 +352,10 @@ void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
 			dst_r.w = w;
 			dst_r.h = h;
 			dst_rect = &dst_r;
-		}
-		else if (vid.blit->aspect>0) { // aspect
+		} else if (vid.blit->aspect > 0) { // aspect
 			int h = FIXED_HEIGHT;
 			int w = h * vid.blit->aspect;
-			if (w>FIXED_WIDTH) {
+			if (w > FIXED_WIDTH) {
 				double ratio = 1 / vid.blit->aspect;
 				w = FIXED_WIDTH;
 				h = w * ratio;
@@ -373,21 +384,21 @@ void PLAT_flip(SDL_Surface* IGNORED, int ignored) {
 #define OVERLAY_BPP 4
 #define OVERLAY_DEPTH 16
 #define OVERLAY_PITCH (OVERLAY_WIDTH * OVERLAY_BPP) // unscaled
-#define OVERLAY_RGBA_MASK 0x00ff0000,0x0000ff00,0x000000ff,0xff000000 // ARGB
+#define OVERLAY_RGBA_MASK 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000 // ARGB
 static struct OVL_Context {
 	SDL_Surface* overlay;
 } ovl;
 
 SDL_Surface* PLAT_initOverlay(void) {
-	ovl.overlay = SDL_CreateRGBSurface(SDL_SWSURFACE, SCALE2(OVERLAY_WIDTH,OVERLAY_HEIGHT),OVERLAY_DEPTH,OVERLAY_RGBA_MASK);
+	ovl.overlay = SDL_CreateRGBSurface(SDL_SWSURFACE, SCALE2(OVERLAY_WIDTH, OVERLAY_HEIGHT),
+	                                   OVERLAY_DEPTH, OVERLAY_RGBA_MASK);
 	return ovl.overlay;
 }
 void PLAT_quitOverlay(void) {
-	if (ovl.overlay) SDL_FreeSurface(ovl.overlay);
+	if (ovl.overlay)
+		SDL_FreeSurface(ovl.overlay);
 }
-void PLAT_enableOverlay(int enable) {
-
-}
+void PLAT_enableOverlay(int enable) {}
 
 ///////////////////////////////
 // Power and Hardware

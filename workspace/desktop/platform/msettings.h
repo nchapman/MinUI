@@ -108,4 +108,4 @@ void SetHDMI(int value);
  */
 int GetMute(void);
 
-#endif  // __msettings_h__
+#endif // __msettings_h__

@@ -60,7 +60,8 @@ TIDY_SOURCES = workspace/all/minui/*.c \
                workspace/all/common/*.c \
                workspace/all/minput/*.c \
                workspace/all/say/*.c \
-               workspace/all/syncsettings/*.c
+               workspace/all/syncsettings/*.c \
+               workspace/*/platform/*.c
 
 # Auto-detect SDL2 include path (works on both macOS and Ubuntu)
 SDL2_CFLAGS := $(shell sdl2-config --cflags 2>/dev/null)
@@ -321,7 +322,10 @@ FORMAT_PATHS = workspace/all/minui/*.c \
                workspace/all/clock/*.c \
                workspace/all/minput/*.c \
                workspace/all/say/*.c \
-               workspace/all/syncsettings/*.c
+               workspace/all/syncsettings/*.c \
+               workspace/*/platform/platform.c \
+               workspace/*/platform/platform.h \
+               workspace/desktop/platform/msettings.h
 
 check-clang-format:
 	@which $(CLANG_FORMAT) > /dev/null || (echo "Error: clang-format not installed. Run 'brew install llvm' or 'apt-get install clang-format'" && exit 1)
