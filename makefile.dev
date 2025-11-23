@@ -33,7 +33,7 @@ help:
 PLATFORM = macos
 SDL_INCLUDES = -I/opt/homebrew/include
 SDL_LIBS = -L/opt/homebrew/lib
-FAKESD_PATH = $(shell pwd)/workspace/macos/FAKESD
+FAKESD_PATH = $(shell pwd)/workspace/desktop/FAKESD
 
 # Aspect ratio configuration (4x3 or 16x9)
 # Can be overridden: ASPECT_RATIO=16x9 make dev-run
@@ -49,7 +49,7 @@ endif
 
 # Compiler and flags (native macOS)
 CC = gcc
-INCDIR = -I workspace/all/minui -I workspace/all/common -I workspace/macos/platform $(SDL_INCLUDES)
+INCDIR = -I workspace/all/minui -I workspace/all/common -I workspace/desktop/platform $(SDL_INCLUDES)
 # Use LOG_FLAGS from parent Makefile, or default to full logging for dev builds
 LOG_FLAGS ?= -DENABLE_INFO_LOGS -DENABLE_DEBUG_LOGS
 CFLAGS = -fomit-frame-pointer -DPLATFORM=\"$(PLATFORM)\" -DUSE_SDL2 $(LOG_FLAGS) -Ofast -std=gnu99
@@ -67,13 +67,13 @@ MINUI_SOURCE = workspace/all/minui/minui.c \
                workspace/all/common/collections.c \
                workspace/all/common/pad.c \
                workspace/all/common/gfx_text.c \
-               workspace/macos/platform/platform.c
+               workspace/desktop/platform/platform.c
 
 # Header files (dependencies)
-MINUI_HEADERS = $(wildcard workspace/all/common/*.h) $(wildcard workspace/macos/platform/*.h)
+MINUI_HEADERS = $(wildcard workspace/all/common/*.h) $(wildcard workspace/desktop/platform/*.h)
 
 # Build output
-BUILD_DIR = workspace/all/minui/build/macos
+BUILD_DIR = workspace/all/minui/build/desktop
 MINUI_BIN = $(BUILD_DIR)/minui
 
 # Check if SDL2 is installed and sync resources
@@ -111,7 +111,7 @@ dev-run: dev
 	@echo "Launching minui..."
 	@echo "FAKESD path: $(FAKESD_PATH)"
 	@echo ""
-	@cd workspace/all/minui && ./build/macos/minui
+	@cd workspace/all/minui && ./build/desktop/minui
 
 # Clean build artifacts
 dev-clean:

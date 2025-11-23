@@ -47,10 +47,10 @@ This gives you:
 - **Keyboard controls**: Arrow keys (D-pad), A/S/W/Q (buttons), Enter (Start), Space (Menu)
 - **Quit**: Hold Backspace/Delete
 
-The fake SD card lives at `workspace/macos/FAKESD/`. Add test ROMs there:
+The fake SD card lives at `workspace/desktop/FAKESD/`. Add test ROMs there:
 ```bash
-mkdir -p workspace/macos/FAKESD/Roms/GB
-cp ~/Downloads/game.gb workspace/macos/FAKESD/Roms/GB/
+mkdir -p workspace/desktop/FAKESD/Roms/GB
+cp ~/Downloads/game.gb workspace/desktop/FAKESD/Roms/GB/
 ```
 
 **Development commands:**
@@ -95,7 +95,7 @@ Find bugs before they ship:
 make lint        # Check common code
 ```
 
-This runs `cppcheck` on `workspace/all/` which contains all the platform-independent code.
+This runs `clang-tidy` on `workspace/all/` which contains all the platform-independent code.
 
 ### Unit Tests
 

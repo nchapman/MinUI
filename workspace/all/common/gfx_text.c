@@ -47,17 +47,17 @@ extern int TTF_SizeUTF8(TTF_Font* font, const char* text, int* w, int* h);
  * @param padding Additional padding to account for in pixels
  * @return Final width of truncated text including padding
  */
-int GFX_truncateText(TTF_Font* font, const char* in_name, char* out_name, int max_width,
+int GFX_truncateText(TTF_Font* ttf_font, const char* in_name, char* out_name, int max_width,
                      int padding) {
 	int text_width;
 	strcpy(out_name, in_name);
-	TTF_SizeUTF8(font, out_name, &text_width, NULL);
+	TTF_SizeUTF8(ttf_font, out_name, &text_width, NULL);
 	text_width += padding;
 
 	while (text_width > max_width) {
 		int len = strlen(out_name);
 		strcpy(&out_name[len - 4], "...\0");
-		TTF_SizeUTF8(font, out_name, &text_width, NULL);
+		TTF_SizeUTF8(ttf_font, out_name, &text_width, NULL);
 		text_width += padding;
 	}
 
@@ -79,7 +79,7 @@ int GFX_truncateText(TTF_Font* font, const char* in_name, char* out_name, int ma
  *
  * @note Input string is modified - spaces become newlines at wrap points
  */
-int GFX_wrapText(TTF_Font* font, char* str, int max_width, int max_lines) {
+int GFX_wrapText(TTF_Font* ttf_font, char* str, int max_width, int max_lines) {
 	if (!str)
 		return 0;
 
@@ -88,9 +88,9 @@ int GFX_wrapText(TTF_Font* font, char* str, int max_width, int max_lines) {
 	char* line = str;
 	char buffer[MAX_PATH];
 
-	TTF_SizeUTF8(font, line, &line_width, NULL);
+	TTF_SizeUTF8(ttf_font, line, &line_width, NULL);
 	if (line_width <= max_width) {
-		line_width = GFX_truncateText(font, line, buffer, max_width, 0);
+		line_width = GFX_truncateText(ttf_font, line, buffer, max_width, 0);
 		strcpy(line, buffer);
 		return line_width;
 	}
@@ -102,7 +102,7 @@ int GFX_wrapText(TTF_Font* font, char* str, int max_width, int max_lines) {
 		tmp = strchr(tmp, ' ');
 		if (!tmp) {
 			if (prev) {
-				TTF_SizeUTF8(font, line, &line_width, NULL);
+				TTF_SizeUTF8(ttf_font, line, &line_width, NULL);
 				if (line_width >= max_width) {
 					if (line_width > max_line_width)
 						max_line_width = line_width;
@@ -114,16 +114,22 @@ int GFX_wrapText(TTF_Font* font, char* str, int max_width, int max_lines) {
 		}
 		tmp[0] = '\0';
 
-		TTF_SizeUTF8(font, line, &line_width, NULL);
+		TTF_SizeUTF8(ttf_font, line, &line_width, NULL);
 
 		if (line_width >= max_width) { // wrap
 			if (line_width > max_line_width)
 				max_line_width = line_width;
 			tmp[0] = ' ';
 			tmp += 1;
-			prev[0] = '\n';
-			prev += 1;
-			line = prev;
+			if (prev) {
+				prev[0] = '\n';
+				prev += 1;
+				line = prev;
+			} else {
+				// TODO: If first word is too long (no prev space), it gets skipped.
+				// Should truncate with "..." instead of dropping it entirely.
+				line = tmp;
+			}
 			lines += 1;
 		} else { // continue
 			tmp[0] = ' ';
@@ -132,7 +138,7 @@ int GFX_wrapText(TTF_Font* font, char* str, int max_width, int max_lines) {
 		}
 	}
 
-	line_width = GFX_truncateText(font, line, buffer, max_width, 0);
+	line_width = GFX_truncateText(ttf_font, line, buffer, max_width, 0);
 	strcpy(line, buffer);
 
 	if (line_width > max_line_width)
@@ -152,7 +158,7 @@ int GFX_wrapText(TTF_Font* font, char* str, int max_width, int max_lines) {
  * @param w Output: Width of widest line in pixels
  * @param h Output: Total height (line count * leading)
  */
-void GFX_sizeText(TTF_Font* font, char* str, int leading, int* w, int* h) {
+void GFX_sizeText(TTF_Font* ttf_font, char* str, int leading, int* w, int* h) {
 	char* lines[MAX_TEXT_LINES];
 	int count = splitTextLines(str, lines, MAX_TEXT_LINES);
 	*h = count * leading;
@@ -173,7 +179,7 @@ void GFX_sizeText(TTF_Font* font, char* str, int leading, int* w, int* h) {
 
 		if (len) {
 			int lw;
-			TTF_SizeUTF8(font, line, &lw, NULL);
+			TTF_SizeUTF8(ttf_font, line, &lw, NULL);
 			if (lw > mw)
 				mw = lw;
 		}

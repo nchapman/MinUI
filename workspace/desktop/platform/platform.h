@@ -1,14 +1,14 @@
 /**
- * macos/platform/platform.h - Platform definitions for macOS development/testing
+ * desktop/platform/platform.h - Platform definitions for desktop development/testing/CI
  *
- * This is a development platform for testing MinUI on macOS:
+ * This is a development platform for testing MinUI on desktop systems (macOS, Linux):
  * - 640x480 display (VGA resolution, 2x scaled)
- * - Uses evdev/keyboard input codes
- * - FAKESD path for local development
+ * - Uses SDL2 for cross-platform compatibility
+ * - FAKESD path for local development, /tmp for CI
  * - No joystick input support
- * - Inverted volume scale (63 = mute, 0 = max volume)
+ * - Stub implementations for platform-specific functions
  *
- * @note This platform is for development only, not production deployment
+ * @note This platform is for development/CI only, not production deployment
  */
 
 #ifndef PLATFORM_H
@@ -155,7 +155,7 @@
 // Platform-Specific Paths and Settings
 ///////////////////////////////
 
-#define SDCARD_PATH "../../macos/FAKESD"
+#define SDCARD_PATH "../../desktop/FAKESD"
 #define MUTE_VOLUME_RAW 63         // Volume scale is inverted: 63 = mute, 0 = max volume
 
 ///////////////////////////////

@@ -14,15 +14,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Install linting tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format shellcheck cppcheck
-          cppcheck --version
+          sudo apt-get install -y clang-tidy clang-format shellcheck libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
+          clang-tidy --version
 
       - name: Run all linting checks
         run: make lint
+
+  analyze:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Clang Static Analyzer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tools libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
+          which scan-build
+
+      - name: Run Clang Static Analyzer
+        run: make analyze
 
   test:
     name: Test
@@ -31,6 +52,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

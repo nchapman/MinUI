@@ -826,7 +826,7 @@ void GFX_blitButton(char* hint, char* button, SDL_Surface* dst, SDL_Rect* dst_re
  *
  * @note Maximum 16 lines supported, line height is fixed at 24 (scaled)
  */
-void GFX_blitMessage(TTF_Font* font, char* msg, SDL_Surface* dst, const SDL_Rect* dst_rect) {
+void GFX_blitMessage(TTF_Font* ttf_font, char* msg, SDL_Surface* dst, const SDL_Rect* dst_rect) {
 	if (!dst_rect)
 		dst_rect = &(SDL_Rect){0, 0, dst->w, dst->h};
 
@@ -859,7 +859,7 @@ void GFX_blitMessage(TTF_Font* font, char* msg, SDL_Surface* dst, const SDL_Rect
 
 
 		if (len) {
-			text = TTF_RenderUTF8_Blended(font, line, COLOR_WHITE);
+			text = TTF_RenderUTF8_Blended(ttf_font, line, COLOR_WHITE);
 			int x = dst_rect->x;
 			x += (dst_rect->w - text->w) / 2;
 			SDL_BlitSurface(text, NULL, dst, &(SDL_Rect){x, y});
@@ -1068,7 +1068,7 @@ int GFX_blitButtonGroup(char** pairs, int primary, SDL_Surface* dst, int align_r
  *
  * @note Maximum 16 lines supported
  */
-void GFX_blitText(TTF_Font* font, char* str, int leading, SDL_Color color, SDL_Surface* dst,
+void GFX_blitText(TTF_Font* ttf_font, char* str, int leading, SDL_Color color, SDL_Surface* dst,
                   SDL_Rect* dst_rect) {
 	if (dst_rect == NULL)
 		dst_rect = &(SDL_Rect){0, 0, dst->w, dst->h};
@@ -1093,7 +1093,7 @@ void GFX_blitText(TTF_Font* font, char* str, int leading, SDL_Color color, SDL_S
 		}
 
 		if (len) {
-			text = TTF_RenderUTF8_Blended(font, line, color);
+			text = TTF_RenderUTF8_Blended(ttf_font, line, color);
 			SDL_BlitSurface(text, NULL, dst,
 			                &(SDL_Rect){x + ((dst_rect->w - text->w) / 2), y + (i * leading)});
 			SDL_FreeSurface(text);
@@ -1170,7 +1170,7 @@ static void SND_audioCallback(void* userdata, uint8_t* stream, int len) { // pla
 		snd.frame_out += 1;
 		len -= 1;
 
-		if (snd.frame_out >= snd.frame_count)
+		if (snd.frame_out >= (int)snd.frame_count)
 			snd.frame_out = 0;
 	}
 
@@ -1206,7 +1206,13 @@ static void SND_resizeBuffer(void) { // plat_sound_resize_buffer
 	SDL_LockAudio();
 
 	int buffer_bytes = snd.frame_count * sizeof(SND_Frame);
-	snd.buffer = realloc(snd.buffer, buffer_bytes);
+	void* new_buffer = realloc(snd.buffer, buffer_bytes);
+	if (!new_buffer) {
+		LOG_error("Failed to allocate audio buffer (%d bytes)\n", buffer_bytes);
+		SDL_UnlockAudio();
+		return;
+	}
+	snd.buffer = new_buffer;
 
 	memset(snd.buffer, 0, buffer_bytes);
 
@@ -1228,7 +1234,7 @@ static void SND_resizeBuffer(void) { // plat_sound_resize_buffer
  */
 static int SND_resampleNone(SND_Frame frame) { // audio_resample_passthrough
 	snd.buffer[snd.frame_in++] = frame;
-	if (snd.frame_in >= snd.frame_count)
+	if (snd.frame_in >= (int)snd.frame_count)
 		snd.frame_in = 0;
 	return 1;
 }
@@ -1248,7 +1254,7 @@ static int SND_resampleNear(SND_Frame frame) { // audio_resample_nearest
 
 	if (diff < snd.sample_rate_out) {
 		snd.buffer[snd.frame_in++] = frame;
-		if (snd.frame_in >= snd.frame_count)
+		if (snd.frame_in >= (int)snd.frame_count)
 			snd.frame_in = 0;
 		diff += snd.sample_rate_in;
 	}
@@ -1479,7 +1485,7 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void) {
 		int pressed = 0; // 0=up,1=down
 		int id = -1;
 		if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
-			uint8_t code = event.key.keysym.scancode;
+			int code = event.key.keysym.scancode;
 			pressed = event.type == SDL_KEYDOWN;
 			// LOG_info("key event: %i (%i)\n", code,pressed);
 			if (code == CODE_UP) {
@@ -1550,7 +1556,7 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void) {
 				id = BTN_ID_POWEROFF;
 			} // nano-only
 		} else if (event.type == SDL_JOYBUTTONDOWN || event.type == SDL_JOYBUTTONUP) {
-			uint8_t joy = event.jbutton.button;
+			int joy = event.jbutton.button;
 			pressed = event.type == SDL_JOYBUTTONDOWN;
 			// LOG_info("joy event: %i (%i)\n", joy,pressed);
 			if (joy == JOY_UP) {
@@ -1776,7 +1782,7 @@ FALLBACK_IMPLEMENTATION int PLAT_shouldWake(void) {
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {
 		if (event.type == SDL_KEYUP) {
-			uint8_t code = event.key.keysym.scancode;
+			int code = event.key.keysym.scancode;
 			if ((BTN_WAKE == BTN_POWER && code == CODE_POWER) ||
 			    (BTN_WAKE == BTN_MENU && (code == CODE_MENU || code == CODE_MENU_ALT))) {
 				// ignore input while lid is closed
@@ -1785,7 +1791,7 @@ FALLBACK_IMPLEMENTATION int PLAT_shouldWake(void) {
 				return 1;
 			}
 		} else if (event.type == SDL_JOYBUTTONUP) {
-			uint8_t joy = event.jbutton.button;
+			int joy = event.jbutton.button;
 			if ((BTN_WAKE == BTN_POWER && joy == JOY_POWER) ||
 			    (BTN_WAKE == BTN_MENU && (joy == JOY_MENU || joy == JOY_MENU_ALT))) {
 				// ignore input while lid is closed
@@ -2034,8 +2040,8 @@ void PWR_update(int* _dirty, int* _show_setting, PWR_callback_t before_sleep,
 	static uint32_t power_pressed_at = 0; // timestamp when power button was just pressed
 	static uint32_t mod_unpressed_at =
 	    0; // timestamp of last time settings modifier key was NOT down
-	static uint32_t was_muted = -1;
-	if (was_muted == -1)
+	static uint32_t was_muted = (uint32_t)-1;
+	if (was_muted == (uint32_t)-1)
 		was_muted = GetMute();
 
 	static int was_charging = -1;
@@ -2116,7 +2122,7 @@ void PWR_update(int* _dirty, int* _show_setting, PWR_callback_t before_sleep,
 	}
 
 	int muted = GetMute();
-	if (muted != was_muted) {
+	if ((uint32_t)muted != was_muted) {
 		was_muted = muted;
 		show_setting = 2;
 		setting_shown_at = now;

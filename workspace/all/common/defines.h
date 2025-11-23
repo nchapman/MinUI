@@ -157,27 +157,27 @@
  */
 #define COLOR_WHITE                                                                                \
 	(SDL_Color) {                                                                                  \
-		TRIAD_WHITE                                                                                \
+		TRIAD_WHITE, 0                                                                             \
 	}
 #define COLOR_GRAY                                                                                 \
 	(SDL_Color) {                                                                                  \
-		TRIAD_GRAY                                                                                 \
+		TRIAD_GRAY, 0                                                                              \
 	}
 #define COLOR_BLACK                                                                                \
 	(SDL_Color) {                                                                                  \
-		TRIAD_BLACK                                                                                \
+		TRIAD_BLACK, 0                                                                             \
 	}
 #define COLOR_LIGHT_TEXT                                                                           \
 	(SDL_Color) {                                                                                  \
-		TRIAD_LIGHT_TEXT                                                                           \
+		TRIAD_LIGHT_TEXT, 0                                                                        \
 	}
 #define COLOR_DARK_TEXT                                                                            \
 	(SDL_Color) {                                                                                  \
-		TRIAD_DARK_TEXT                                                                            \
+		TRIAD_DARK_TEXT, 0                                                                         \
 	}
 #define COLOR_BUTTON_TEXT                                                                          \
 	(SDL_Color) {                                                                                  \
-		TRIAD_GRAY                                                                                 \
+		TRIAD_GRAY, 0                                                                              \
 	}
 
 ///////////////////////////////

@@ -41,7 +41,7 @@ connect()
 	wifictl enable &
 	DELAY=30
 	show.elf "$RES_PATH/enable.png" $DELAY &
-	for i in `seq 1 $DELAY`; do
+	for _ in `seq 1 $DELAY`; do
 		STATUS=$(cat "/sys/class/net/wlan0/operstate")
 		if [ "$STATUS" = "up" ]; then
 			break

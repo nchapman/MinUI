@@ -13,7 +13,7 @@ RUN echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.l
 RUN apt-get update && apt-get install -y \
     gcc \
     make \
-    cppcheck \
+    clang-tidy \
     shellcheck \
     && rm -rf /var/lib/apt/lists/*
 

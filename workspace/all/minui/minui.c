@@ -275,7 +275,6 @@ static int getIndexChar(char* str) {
  * @param out_name Output buffer for unique name (min 256 bytes)
  */
 static void getUniqueName(Entry* entry, char* out_name) {
-	char* filename = strrchr(entry->path, '/') + 1;
 	char emu_tag[256];
 	getEmuName(entry->path, emu_tag);
 
@@ -911,13 +910,13 @@ static int hasRecents(void) {
 					if (hasM3u(sd_path, m3u_path)) { // TODO: this might tank launch speed
 						char parent_path[256];
 						strcpy(parent_path, path);
-						char* tmp = strrchr(parent_path, '/') + 1;
-						tmp[0] = '\0';
+						char* sep = strrchr(parent_path, '/') + 1;
+						sep[0] = '\0';
 
 						int found = 0;
 						for (int i = 0; i < parent_paths->count; i++) {
-							char* path = parent_paths->items[i];
-							if (prefixMatch(path, parent_path)) {
+							char* item_path = parent_paths->items[i];
+							if (prefixMatch(item_path, parent_path)) {
 								found = 1;
 								break;
 							}
@@ -961,6 +960,9 @@ static int hasCollections(void) {
 		return has;
 
 	DIR* dh = opendir(COLLECTIONS_PATH);
+	if (!dh)
+		return has;
+
 	struct dirent* dp;
 	while ((dp = readdir(dh)) != NULL) {
 		if (hide(dp->d_name))
@@ -1734,11 +1736,13 @@ static void openDirectory(char* path, int auto_launch) {
 	}
 
 	top = Directory_new(path, selected);
-	top->start = start;
-	top->end =
-	    end ? end : ((top->entries->count < MAIN_ROW_COUNT) ? top->entries->count : MAIN_ROW_COUNT);
-
-	Array_push(stack, top);
+	if (top) {
+		top->start = start;
+		top->end =
+		    end ? end
+		        : ((top->entries->count < MAIN_ROW_COUNT) ? top->entries->count : MAIN_ROW_COUNT);
+		Array_push(stack, top);
+	}
 }
 /**
  * Closes the current directory and returns to parent.
@@ -2196,7 +2200,7 @@ int main(int argc, char* argv[]) {
 					SDL_Surface* thumb = IMG_Load(res_path);
 					ox = MAX(FIXED_WIDTH - FIXED_HEIGHT, (FIXED_WIDTH - thumb->w));
 					oy = (FIXED_HEIGHT - thumb->h) / 2;
-					SDL_BlitSurface(thumb, NULL, screen, &(SDL_Rect){ox, oy});
+					SDL_BlitSurface(thumb, NULL, screen, &(SDL_Rect){ox, oy, 0, 0});
 					SDL_FreeSurface(thumb);
 				}
 			}
@@ -2255,17 +2259,17 @@ int main(int argc, char* argv[]) {
 					int h = SCALE1(VERSION_LINE_HEIGHT * 4);
 					version = SDL_CreateRGBSurface(0, w, h, 16, 0, 0, 0, 0);
 
-					SDL_BlitSurface(release_txt, NULL, version, &(SDL_Rect){0, 0});
-					SDL_BlitSurface(version_txt, NULL, version, &(SDL_Rect){x, 0});
+					SDL_BlitSurface(release_txt, NULL, version, &(SDL_Rect){0, 0, 0, 0});
+					SDL_BlitSurface(version_txt, NULL, version, &(SDL_Rect){x, 0, 0, 0});
 					SDL_BlitSurface(commit_txt, NULL, version,
-					                &(SDL_Rect){0, SCALE1(VERSION_LINE_HEIGHT)});
+					                &(SDL_Rect){0, SCALE1(VERSION_LINE_HEIGHT), 0, 0});
 					SDL_BlitSurface(hash_txt, NULL, version,
-					                &(SDL_Rect){x, SCALE1(VERSION_LINE_HEIGHT)});
+					                &(SDL_Rect){x, SCALE1(VERSION_LINE_HEIGHT), 0, 0});
 
 					SDL_BlitSurface(key_txt, NULL, version,
-					                &(SDL_Rect){0, SCALE1(VERSION_LINE_HEIGHT * 3)});
+					                &(SDL_Rect){0, SCALE1(VERSION_LINE_HEIGHT * 3), 0, 0});
 					SDL_BlitSurface(val_txt, NULL, version,
-					                &(SDL_Rect){x, SCALE1(VERSION_LINE_HEIGHT * 3)});
+					                &(SDL_Rect){x, SCALE1(VERSION_LINE_HEIGHT * 3), 0, 0});
 
 					SDL_FreeSurface(release_txt);
 					SDL_FreeSurface(version_txt);
@@ -2276,7 +2280,7 @@ int main(int argc, char* argv[]) {
 				}
 				SDL_BlitSurface(
 				    version, NULL, screen,
-				    &(SDL_Rect){(screen->w - version->w) / 2, (screen->h - version->h) / 2});
+				    &(SDL_Rect){(screen->w - version->w) / 2, (screen->h - version->h) / 2, 0, 0});
 
 				// buttons (duped and trimmed from below)
 				if (show_setting && !GetHDMI())
@@ -2328,7 +2332,7 @@ int main(int argc, char* argv[]) {
 							    &(SDL_Rect){0, 0, max_width - SCALE1(BUTTON_PADDING * 2), text->h},
 							    screen,
 							    &(SDL_Rect){SCALE1(PADDING + BUTTON_PADDING),
-							                SCALE1(PADDING + (j * PILL_SIZE) + 4)});
+							                SCALE1(PADDING + (j * PILL_SIZE) + 4), 0, 0});
 
 							GFX_truncateText(font.large, entry_name, display_name, available_width,
 							                 SCALE1(BUTTON_PADDING * 2));
@@ -2340,7 +2344,7 @@ int main(int argc, char* argv[]) {
 						    &(SDL_Rect){0, 0, max_width - SCALE1(BUTTON_PADDING * 2), text->h},
 						    screen,
 						    &(SDL_Rect){SCALE1(PADDING + BUTTON_PADDING),
-						                SCALE1(PADDING + (j * PILL_SIZE) + 4)});
+						                SCALE1(PADDING + (j * PILL_SIZE) + 4), 0, 0});
 						SDL_FreeSurface(text);
 					}
 				} else {

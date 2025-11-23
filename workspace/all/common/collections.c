@@ -6,6 +6,7 @@
  */
 
 #include "collections.h"
+#include "log.h"
 #include "utils.h"
 #include <stdlib.h>
 #include <string.h>
@@ -47,7 +48,13 @@ Array* Array_new(void) {
 void Array_push(Array* self, void* item) {
 	if (self->count >= self->capacity) {
 		self->capacity *= 2;
-		self->items = realloc(self->items, sizeof(void*) * self->capacity);
+		void** new_items = realloc(self->items, sizeof(void*) * self->capacity);
+		if (!new_items) {
+			LOG_error("Failed to grow array to capacity %d\n", self->capacity);
+			self->capacity /= 2; // restore original capacity
+			return;
+		}
+		self->items = new_items;
 	}
 	self->items[self->count++] = item;
 }

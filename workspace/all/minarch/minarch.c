@@ -241,12 +241,12 @@ typedef int (*Zip_extract_t)(FILE* zip, FILE* dst, size_t size);
  * @return 0 on success, -1 on error
  */
 static int Zip_copy(FILE* zip, FILE* dst, size_t size) {
-	uint8_t buffer[ZIP_CHUNK_SIZE];
+	uint8_t chunk[ZIP_CHUNK_SIZE];
 	while (size) {
 		size_t sz = MIN(size, ZIP_CHUNK_SIZE);
-		if (sz != fread(buffer, 1, sz, zip))
+		if (sz != fread(chunk, 1, sz, zip))
 			return -1;
-		if (sz != fwrite(buffer, 1, sz, dst))
+		if (sz != fwrite(chunk, 1, sz, dst))
 			return -1;
 		size -= sz;
 	}
@@ -296,6 +296,7 @@ static int Zip_inflate(FILE* zip, FILE* dst, size_t size) {
 			switch (ret) {
 			case Z_NEED_DICT:
 				ret = Z_DATA_ERROR;
+				/* fall through */
 			case Z_DATA_ERROR:
 			case Z_MEM_ERROR:
 				(void)inflateEnd(&stream);
@@ -484,7 +485,7 @@ static void Game_open(char* path) {
 		fseek(file, 0, SEEK_END);
 		game.size = ftell(file);
 
-		rewind(file);
+		fseek(file, 0, SEEK_SET);
 		game.data = malloc(game.size);
 		if (game.data == NULL) {
 			LOG_error("Couldn't allocate memory for file: %s", path);
@@ -756,6 +757,7 @@ static void State_read(void) {
 	int was_ff = fast_forward;
 	fast_forward = 0;
 
+	FILE* state_file = NULL;
 	void* state = calloc(1, state_size);
 	if (!state) {
 		LOG_error("Couldn't allocate memory for state");
@@ -765,7 +767,7 @@ static void State_read(void) {
 	char filename[MAX_PATH];
 	State_getPath(filename);
 
-	FILE* state_file = fopen(filename, "r");
+	state_file = fopen(filename, "r");
 	if (!state_file) {
 		if (state_slot != 8) { // st8 is a default state in MiniUI and may not exist, that's okay
 			LOG_error("Error opening state file: %s (%s)", filename, strerror(errno));
@@ -811,6 +813,7 @@ static void State_write(void) {
 	int was_ff = fast_forward;
 	fast_forward = 0;
 
+	FILE* state_file = NULL;
 	void* state = calloc(1, state_size);
 	if (!state) {
 		LOG_error("Couldn't allocate memory for state");
@@ -820,7 +823,7 @@ static void State_write(void) {
 	char filename[MAX_PATH];
 	State_getPath(filename);
 
-	FILE* state_file = fopen(filename, "w");
+	state_file = fopen(filename, "w");
 	if (!state_file) {
 		LOG_error("Error opening state file: %s (%s)", filename, strerror(errno));
 		goto error;
@@ -958,43 +961,203 @@ typedef struct ButtonMapping {
 
 static ButtonMapping default_button_mapping[] =
     { // used if pak.cfg doesn't exist or doesn't have bindings
-        {"Up", RETRO_DEVICE_ID_JOYPAD_UP, BTN_ID_DPAD_UP},
-        {"Down", RETRO_DEVICE_ID_JOYPAD_DOWN, BTN_ID_DPAD_DOWN},
-        {"Left", RETRO_DEVICE_ID_JOYPAD_LEFT, BTN_ID_DPAD_LEFT},
-        {"Right", RETRO_DEVICE_ID_JOYPAD_RIGHT, BTN_ID_DPAD_RIGHT},
-        {"A Button", RETRO_DEVICE_ID_JOYPAD_A, BTN_ID_A},
-        {"B Button", RETRO_DEVICE_ID_JOYPAD_B, BTN_ID_B},
-        {"X Button", RETRO_DEVICE_ID_JOYPAD_X, BTN_ID_X},
-        {"Y Button", RETRO_DEVICE_ID_JOYPAD_Y, BTN_ID_Y},
-        {"Start", RETRO_DEVICE_ID_JOYPAD_START, BTN_ID_START},
-        {"Select", RETRO_DEVICE_ID_JOYPAD_SELECT, BTN_ID_SELECT},
-        {"L1 Button", RETRO_DEVICE_ID_JOYPAD_L, BTN_ID_L1},
-        {"R1 Button", RETRO_DEVICE_ID_JOYPAD_R, BTN_ID_R1},
-        {"L2 Button", RETRO_DEVICE_ID_JOYPAD_L2, BTN_ID_L2},
-        {"R2 Button", RETRO_DEVICE_ID_JOYPAD_R2, BTN_ID_R2},
-        {"L3 Button", RETRO_DEVICE_ID_JOYPAD_L3, BTN_ID_L3},
-        {"R3 Button", RETRO_DEVICE_ID_JOYPAD_R3, BTN_ID_R3},
-        {NULL, 0, 0}};
+        {.name = "Up",
+         .retro = RETRO_DEVICE_ID_JOYPAD_UP,
+         .local = BTN_ID_DPAD_UP,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "Down",
+         .retro = RETRO_DEVICE_ID_JOYPAD_DOWN,
+         .local = BTN_ID_DPAD_DOWN,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "Left",
+         .retro = RETRO_DEVICE_ID_JOYPAD_LEFT,
+         .local = BTN_ID_DPAD_LEFT,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "Right",
+         .retro = RETRO_DEVICE_ID_JOYPAD_RIGHT,
+         .local = BTN_ID_DPAD_RIGHT,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "A Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_A,
+         .local = BTN_ID_A,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "B Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_B,
+         .local = BTN_ID_B,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "X Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_X,
+         .local = BTN_ID_X,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "Y Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_Y,
+         .local = BTN_ID_Y,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "Start",
+         .retro = RETRO_DEVICE_ID_JOYPAD_START,
+         .local = BTN_ID_START,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "Select",
+         .retro = RETRO_DEVICE_ID_JOYPAD_SELECT,
+         .local = BTN_ID_SELECT,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "L1 Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_L,
+         .local = BTN_ID_L1,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "R1 Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_R,
+         .local = BTN_ID_R1,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "L2 Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_L2,
+         .local = BTN_ID_L2,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "R2 Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_R2,
+         .local = BTN_ID_R2,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "L3 Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_L3,
+         .local = BTN_ID_L3,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "R3 Button",
+         .retro = RETRO_DEVICE_ID_JOYPAD_R3,
+         .local = BTN_ID_R3,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = NULL, .retro = 0, .local = 0, .mod = 0, .default_ = 0, .ignore = 0}};
 static ButtonMapping button_label_mapping[] =
     { // used to lookup the retro_id and local btn_id from button name
-        {"NONE", -1, BTN_ID_NONE},
-        {"UP", RETRO_DEVICE_ID_JOYPAD_UP, BTN_ID_DPAD_UP},
-        {"DOWN", RETRO_DEVICE_ID_JOYPAD_DOWN, BTN_ID_DPAD_DOWN},
-        {"LEFT", RETRO_DEVICE_ID_JOYPAD_LEFT, BTN_ID_DPAD_LEFT},
-        {"RIGHT", RETRO_DEVICE_ID_JOYPAD_RIGHT, BTN_ID_DPAD_RIGHT},
-        {"A", RETRO_DEVICE_ID_JOYPAD_A, BTN_ID_A},
-        {"B", RETRO_DEVICE_ID_JOYPAD_B, BTN_ID_B},
-        {"X", RETRO_DEVICE_ID_JOYPAD_X, BTN_ID_X},
-        {"Y", RETRO_DEVICE_ID_JOYPAD_Y, BTN_ID_Y},
-        {"START", RETRO_DEVICE_ID_JOYPAD_START, BTN_ID_START},
-        {"SELECT", RETRO_DEVICE_ID_JOYPAD_SELECT, BTN_ID_SELECT},
-        {"L1", RETRO_DEVICE_ID_JOYPAD_L, BTN_ID_L1},
-        {"R1", RETRO_DEVICE_ID_JOYPAD_R, BTN_ID_R1},
-        {"L2", RETRO_DEVICE_ID_JOYPAD_L2, BTN_ID_L2},
-        {"R2", RETRO_DEVICE_ID_JOYPAD_R2, BTN_ID_R2},
-        {"L3", RETRO_DEVICE_ID_JOYPAD_L3, BTN_ID_L3},
-        {"R3", RETRO_DEVICE_ID_JOYPAD_R3, BTN_ID_R3},
-        {NULL, 0, 0}};
+        {.name = "NONE", .retro = -1, .local = BTN_ID_NONE, .mod = 0, .default_ = 0, .ignore = 0},
+        {.name = "UP",
+         .retro = RETRO_DEVICE_ID_JOYPAD_UP,
+         .local = BTN_ID_DPAD_UP,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "DOWN",
+         .retro = RETRO_DEVICE_ID_JOYPAD_DOWN,
+         .local = BTN_ID_DPAD_DOWN,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "LEFT",
+         .retro = RETRO_DEVICE_ID_JOYPAD_LEFT,
+         .local = BTN_ID_DPAD_LEFT,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "RIGHT",
+         .retro = RETRO_DEVICE_ID_JOYPAD_RIGHT,
+         .local = BTN_ID_DPAD_RIGHT,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "A",
+         .retro = RETRO_DEVICE_ID_JOYPAD_A,
+         .local = BTN_ID_A,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "B",
+         .retro = RETRO_DEVICE_ID_JOYPAD_B,
+         .local = BTN_ID_B,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "X",
+         .retro = RETRO_DEVICE_ID_JOYPAD_X,
+         .local = BTN_ID_X,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "Y",
+         .retro = RETRO_DEVICE_ID_JOYPAD_Y,
+         .local = BTN_ID_Y,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "START",
+         .retro = RETRO_DEVICE_ID_JOYPAD_START,
+         .local = BTN_ID_START,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "SELECT",
+         .retro = RETRO_DEVICE_ID_JOYPAD_SELECT,
+         .local = BTN_ID_SELECT,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "L1",
+         .retro = RETRO_DEVICE_ID_JOYPAD_L,
+         .local = BTN_ID_L1,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "R1",
+         .retro = RETRO_DEVICE_ID_JOYPAD_R,
+         .local = BTN_ID_R1,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "L2",
+         .retro = RETRO_DEVICE_ID_JOYPAD_L2,
+         .local = BTN_ID_L2,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "R2",
+         .retro = RETRO_DEVICE_ID_JOYPAD_R2,
+         .local = BTN_ID_R2,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "L3",
+         .retro = RETRO_DEVICE_ID_JOYPAD_L3,
+         .local = BTN_ID_L3,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = "R3",
+         .retro = RETRO_DEVICE_ID_JOYPAD_R3,
+         .local = BTN_ID_R3,
+         .mod = 0,
+         .default_ = 0,
+         .ignore = 0},
+        {.name = NULL, .retro = 0, .local = 0, .mod = 0, .default_ = 0, .ignore = 0}};
 static ButtonMapping core_button_mapping[RETRO_BUTTON_COUNT + 1] = {0};
 
 static const char* device_button_names[LOCAL_BUTTON_COUNT] = {
@@ -1077,126 +1240,230 @@ static struct Config {
 	int loaded;
 	int initialized;
 } config = {
+    .system_cfg = NULL,
+    .default_cfg = NULL,
+    .user_cfg = NULL,
+    .device_tag = NULL,
     .frontend =
         {// (OptionList)
          .count = FE_OPT_COUNT,
+         .changed = 0,
          .options =
-             (Option[]){
-                 [FE_OPT_SCALING] =
-                     {
-                         .key = "minarch_screen_scaling",
-                         .name = "Screen Scaling",
-                         .desc = NULL, // will call getScreenScalingDesc()
-                         .default_value = 1,
-                         .value = 1,
-                         .count = 3, // will call getScreenScalingCount()
-                         .values = scaling_labels,
-                         .labels = scaling_labels,
-                     },
-                 [FE_OPT_EFFECT] =
-                     {
-                         .key = "minarch_screen_effect",
-                         .name = "Screen Effect",
-                         .desc = "Grid simulates an LCD grid.\nLine simulates CRT "
-                                 "scanlines.\nEffects usually look best at native scaling.",
-                         .default_value = 0,
-                         .value = 0,
-                         .count = 3,
-                         .values = effect_labels,
-                         .labels = effect_labels,
-                     },
-                 [FE_OPT_SHARPNESS] =
-                     {
-                         .key = "minarch_screen_sharpness",
-                         .name = "Screen Sharpness",
-                         .desc = "Sharp uses nearest neighbor sampling.\nCrisp integer upscales "
-                                 "before linear sampling.\nSoft uses linear sampling.",
-                         .default_value = 2,
-                         .value = 2,
-                         .count = 3,
-                         .values = sharpness_labels,
-                         .labels = sharpness_labels,
-                     },
-                 [FE_OPT_TEARING] =
-                     {
-                         .key = "minarch_prevent_tearing",
-                         .name = "Prevent Tearing",
-                         .desc = "Wait for vsync before drawing the next frame.\nLenient only "
-                                 "waits when within frame budget.\nStrict always waits.",
-                         .default_value = VSYNC_LENIENT,
-                         .value = VSYNC_LENIENT,
-                         .count = 3,
-                         .values = tearing_labels,
-                         .labels = tearing_labels,
-                     },
-                 [FE_OPT_OVERCLOCK] =
-                     {
-                         .key = "minarch_cpu_speed",
-                         .name = "CPU Speed",
-                         .desc = "Over- or underclock the CPU to prioritize\npure "
-                                 "performance or power savings.",
-                         .default_value = 1,
-                         .value = 1,
-                         .count = 3,
-                         .values = overclock_labels,
-                         .labels = overclock_labels,
-                     },
-                 [FE_OPT_THREAD] =
-                     {
-                         .key = "minarch_thread_video",
-                         .name = "Prioritize Audio",
-                         .desc = "Can eliminate crackle but\nmay cause dropped "
-                                 "frames.\nOnly turn on if necessary.",
-                         .default_value = 0,
-                         .value = 0,
-                         .count = 2,
-                         .values = onoff_labels,
-                         .labels = onoff_labels,
-                     },
-                 [FE_OPT_DEBUG] =
-                     {
-                         .key = "minarch_debug_hud",
-                         .name = "Debug HUD",
-                         .desc = "Show frames per second, cpu load,\nresolution, and scaler "
-                                 "information.",
-                         .default_value = 0,
-                         .value = 0,
-                         .count = 2,
-                         .values = onoff_labels,
-                         .labels = onoff_labels,
-                     },
-                 [FE_OPT_MAXFF] =
-                     {
-                         .key = "minarch_max_ff_speed",
-                         .name = "Max FF Speed",
-                         .desc = "Fast forward will not exceed the\nselected speed (but may "
-                                 "be less\ndepending on game and emulator).",
-                         .default_value = 3, // 4x
-                         .value = 3, // 4x
-                         .count = 8,
-                         .values = max_ff_labels,
-                         .labels = max_ff_labels,
-                     },
-                 [FE_OPT_COUNT] = {NULL}}},
+             (Option[]){[FE_OPT_SCALING] =
+                            {
+                                .key = "minarch_screen_scaling",
+                                .name = "Screen Scaling",
+                                .desc = NULL, // will call getScreenScalingDesc()
+                                .full = NULL,
+                                .var = NULL,
+                                .default_value = 1,
+                                .value = 1,
+                                .count = 3, // will call getScreenScalingCount()
+                                .lock = 0,
+                                .values = scaling_labels,
+                                .labels = scaling_labels,
+                            },
+                        [FE_OPT_EFFECT] =
+                            {
+                                .key = "minarch_screen_effect",
+                                .name = "Screen Effect",
+                                .desc = "Grid simulates an LCD grid.\nLine simulates CRT "
+                                        "scanlines.\nEffects usually look best at native scaling.",
+                                .full = NULL,
+                                .var = NULL,
+                                .default_value = 0,
+                                .value = 0,
+                                .count = 3,
+                                .lock = 0,
+                                .values = effect_labels,
+                                .labels = effect_labels,
+                            },
+                        [FE_OPT_SHARPNESS] =
+                            {
+                                .key = "minarch_screen_sharpness",
+                                .name = "Screen Sharpness",
+                                .desc =
+                                    "Sharp uses nearest neighbor sampling.\nCrisp integer upscales "
+                                    "before linear sampling.\nSoft uses linear sampling.",
+                                .full = NULL,
+                                .var = NULL,
+                                .default_value = 2,
+                                .value = 2,
+                                .count = 3,
+                                .lock = 0,
+                                .values = sharpness_labels,
+                                .labels = sharpness_labels,
+                            },
+                        [FE_OPT_TEARING] =
+                            {
+                                .key = "minarch_prevent_tearing",
+                                .name = "Prevent Tearing",
+                                .desc =
+                                    "Wait for vsync before drawing the next frame.\nLenient only "
+                                    "waits when within frame budget.\nStrict always waits.",
+                                .full = NULL,
+                                .var = NULL,
+                                .default_value = VSYNC_LENIENT,
+                                .value = VSYNC_LENIENT,
+                                .count = 3,
+                                .lock = 0,
+                                .values = tearing_labels,
+                                .labels = tearing_labels,
+                            },
+                        [FE_OPT_OVERCLOCK] =
+                            {
+                                .key = "minarch_cpu_speed",
+                                .name = "CPU Speed",
+                                .desc = "Over- or underclock the CPU to prioritize\npure "
+                                        "performance or power savings.",
+                                .full = NULL,
+                                .var = NULL,
+                                .default_value = 1,
+                                .value = 1,
+                                .count = 3,
+                                .lock = 0,
+                                .values = overclock_labels,
+                                .labels = overclock_labels,
+                            },
+                        [FE_OPT_THREAD] =
+                            {
+                                .key = "minarch_thread_video",
+                                .name = "Prioritize Audio",
+                                .desc = "Can eliminate crackle but\nmay cause dropped "
+                                        "frames.\nOnly turn on if necessary.",
+                                .full = NULL,
+                                .var = NULL,
+                                .default_value = 0,
+                                .value = 0,
+                                .count = 2,
+                                .lock = 0,
+                                .values = onoff_labels,
+                                .labels = onoff_labels,
+                            },
+                        [FE_OPT_DEBUG] =
+                            {
+                                .key = "minarch_debug_hud",
+                                .name = "Debug HUD",
+                                .desc = "Show frames per second, cpu load,\nresolution, and scaler "
+                                        "information.",
+                                .full = NULL,
+                                .var = NULL,
+                                .default_value = 0,
+                                .value = 0,
+                                .count = 2,
+                                .lock = 0,
+                                .values = onoff_labels,
+                                .labels = onoff_labels,
+                            },
+                        [FE_OPT_MAXFF] =
+                            {
+                                .key = "minarch_max_ff_speed",
+                                .name = "Max FF Speed",
+                                .desc = "Fast forward will not exceed the\nselected speed (but may "
+                                        "be less\ndepending on game and emulator).",
+                                .full = NULL,
+                                .var = NULL,
+                                .default_value = 3, // 4x
+                                .value = 3, // 4x
+                                .count = 8,
+                                .lock = 0,
+                                .values = max_ff_labels,
+                                .labels = max_ff_labels,
+                            },
+                        [FE_OPT_COUNT] =
+                            {
+                                .key = NULL,
+                                .name = NULL,
+                                .desc = NULL,
+                                .full = NULL,
+                                .var = NULL,
+                                .default_value = 0,
+                                .value = 0,
+                                .count = 0,
+                                .lock = 0,
+                                .values = NULL,
+                                .labels = NULL}},
+         .enabled_count = 0,
+         .enabled_options = NULL},
     .core =
         {
             // (OptionList)
             .count = 0,
+            .changed = 0,
             .options =
                 (Option[]){
-                    {NULL},
+                    {.key = NULL,
+                     .name = NULL,
+                     .desc = NULL,
+                     .full = NULL,
+                     .var = NULL,
+                     .default_value = 0,
+                     .value = 0,
+                     .count = 0,
+                     .lock = 0,
+                     .values = NULL,
+                     .labels = NULL},
                 },
+            .enabled_count = 0,
+            .enabled_options = NULL,
         },
     .controls = default_button_mapping,
-    .shortcuts = (ButtonMapping[]){[SHORTCUT_SAVE_STATE] = {"Save State", -1, BTN_ID_NONE, 0},
-                                   [SHORTCUT_LOAD_STATE] = {"Load State", -1, BTN_ID_NONE, 0},
-                                   [SHORTCUT_RESET_GAME] = {"Reset Game", -1, BTN_ID_NONE, 0},
-                                   [SHORTCUT_SAVE_QUIT] = {"Save & Quit", -1, BTN_ID_NONE, 0},
-                                   [SHORTCUT_CYCLE_SCALE] = {"Cycle Scaling", -1, BTN_ID_NONE, 0},
-                                   [SHORTCUT_CYCLE_EFFECT] = {"Cycle Effect", -1, BTN_ID_NONE, 0},
-                                   [SHORTCUT_TOGGLE_FF] = {"Toggle FF", -1, BTN_ID_NONE, 0},
-                                   [SHORTCUT_HOLD_FF] = {"Hold FF", -1, BTN_ID_NONE, 0},
-                                   {NULL}},
+    .shortcuts = (ButtonMapping[]){[SHORTCUT_SAVE_STATE] = {.name = "Save State",
+                                                            .retro = -1,
+                                                            .local = BTN_ID_NONE,
+                                                            .mod = 0,
+                                                            .default_ = 0,
+                                                            .ignore = 0},
+                                   [SHORTCUT_LOAD_STATE] = {.name = "Load State",
+                                                            .retro = -1,
+                                                            .local = BTN_ID_NONE,
+                                                            .mod = 0,
+                                                            .default_ = 0,
+                                                            .ignore = 0},
+                                   [SHORTCUT_RESET_GAME] = {.name = "Reset Game",
+                                                            .retro = -1,
+                                                            .local = BTN_ID_NONE,
+                                                            .mod = 0,
+                                                            .default_ = 0,
+                                                            .ignore = 0},
+                                   [SHORTCUT_SAVE_QUIT] = {.name = "Save & Quit",
+                                                           .retro = -1,
+                                                           .local = BTN_ID_NONE,
+                                                           .mod = 0,
+                                                           .default_ = 0,
+                                                           .ignore = 0},
+                                   [SHORTCUT_CYCLE_SCALE] = {.name = "Cycle Scaling",
+                                                             .retro = -1,
+                                                             .local = BTN_ID_NONE,
+                                                             .mod = 0,
+                                                             .default_ = 0,
+                                                             .ignore = 0},
+                                   [SHORTCUT_CYCLE_EFFECT] = {.name = "Cycle Effect",
+                                                              .retro = -1,
+                                                              .local = BTN_ID_NONE,
+                                                              .mod = 0,
+                                                              .default_ = 0,
+                                                              .ignore = 0},
+                                   [SHORTCUT_TOGGLE_FF] = {.name = "Toggle FF",
+                                                           .retro = -1,
+                                                           .local = BTN_ID_NONE,
+                                                           .mod = 0,
+                                                           .default_ = 0,
+                                                           .ignore = 0},
+                                   [SHORTCUT_HOLD_FF] = {.name = "Hold FF",
+                                                         .retro = -1,
+                                                         .local = BTN_ID_NONE,
+                                                         .mod = 0,
+                                                         .default_ = 0,
+                                                         .ignore = 0},
+                                   {.name = NULL,
+                                    .retro = 0,
+                                    .local = 0,
+                                    .mod = 0,
+                                    .default_ = 0,
+                                    .ignore = 0}},
+    .loaded = 0,
+    .initialized = 0,
 };
 static int Config_getValue(char* cfg, const char* key, char* out_value,
                            int* lock) { // gets value from string
@@ -1768,6 +2035,13 @@ static void OptionList_init(const struct retro_core_option_definition* defs) {
 			int len;
 			const struct retro_core_option_definition* def = &defs[i];
 			Option* item = &config.core.options[i];
+
+			// Defensive check - should never happen if core reports options correctly
+			if (!def->key) {
+				LOG_error("Core option %d has NULL key", i);
+				continue;
+			}
+
 			len = strlen(def->key) + 1;
 
 			item->key = calloc(len, sizeof(char));
@@ -2270,24 +2544,24 @@ static void retro_log_callback(enum retro_log_level level, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 
-	char buffer[2048];
-	vsnprintf(buffer, sizeof(buffer), fmt, args);
+	char msg_buffer[2048];
+	vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
 	va_end(args);
 
 	// Map libretro levels to our levels and log
 	switch (level) {
 	case RETRO_LOG_DEBUG:
-		LOG_debug("%s", buffer);
+		LOG_debug("%s", msg_buffer);
 		break;
 	case RETRO_LOG_INFO:
-		LOG_info("%s", buffer);
+		LOG_info("%s", msg_buffer);
 		break;
 	case RETRO_LOG_WARN:
-		LOG_warn("%s", buffer);
+		LOG_warn("%s", msg_buffer);
 		break;
 	case RETRO_LOG_ERROR:
 	default:
-		LOG_error("%s", buffer);
+		LOG_error("%s", msg_buffer);
 		break;
 	}
 }
@@ -2437,7 +2711,7 @@ static bool environment_callback(unsigned cmd, void* data) { // copied from pico
 		if (infos) {
 			// TODO: store to gamepad_values/gamepad_labels for gamepad_device
 			const struct retro_controller_info* info = &infos[0];
-			for (int i = 0; i < info->num_types; i++) {
+			for (unsigned int i = 0; i < info->num_types; i++) {
 				const struct retro_controller_description* type = &info->types[i];
 				if (exactMatch((char*)type->desc,
 				               "dualshock")) { // currently only enabled for PlayStation
@@ -2911,7 +3185,7 @@ static void blitBitmapText(char* text, int ox, int oy, uint16_t* data, int strid
 		row = data + y * stride;
 		memset(row - 1, 0, (w + 2) * 2);
 		for (int i = 0; i < len; i++) {
-			const char* c = bitmap_font[text[i]];
+			const char* c = bitmap_font[(unsigned char)text[i]];
 			for (int x = 0; x < CHAR_WIDTH; x++) {
 				int j = y * CHAR_WIDTH + x;
 				if (c[j] == '1')
@@ -3292,7 +3566,7 @@ static void selectScaler(int src_w, int src_h, int src_p) {
 
 		// odd resolutions (eg. PS1 Rayman: 320x239) is throwing this off, need to snap to eights
 		int r = (DEVICE_HEIGHT - src_h) % 8;
-		if (r && r < 8)
+		if (r) // r is always < 8 (result of % 8)
 			scale_y -= 1;
 
 		scale = MAX(scale_x, scale_y);
@@ -3309,7 +3583,6 @@ static void selectScaler(int src_w, int src_h, int src_p) {
 			dst_h = scaled_h;
 			dst_p = dst_w * FIXED_BPP;
 		} else {
-			double src_aspect_ratio = ((double)src_w) / src_h;
 			// double core_aspect_ratio
 			double fixed_aspect_ratio = ((double)DEVICE_WIDTH) / DEVICE_HEIGHT;
 			int core_aspect = core.aspect_ratio * 1000;
@@ -3331,8 +3604,8 @@ static void selectScaler(int src_w, int src_h, int src_p) {
 				// dst_w = scaled_w;
 				// dst_h = scaled_w / fixed_aspect_ratio;
 				// dst_h += dst_h%2;
-				int aspect_h = DEVICE_WIDTH / core.aspect_ratio;
-				double aspect_hr = ((double)aspect_h) / DEVICE_HEIGHT;
+				int letterbox_h = DEVICE_WIDTH / core.aspect_ratio;
+				double aspect_hr = ((double)letterbox_h) / DEVICE_HEIGHT;
 				dst_w = scaled_w;
 				dst_h = scaled_h / aspect_hr;
 
@@ -3832,18 +4105,26 @@ static struct {
 	int save_exists;
 	int preview_exists;
 } menu = {.bitmap = NULL,
+          .overlay = NULL,
+          .items =
+              {
+                  [ITEM_CONT] = "Continue",
+                  [ITEM_SAVE] = "Save",
+                  [ITEM_LOAD] = "Load",
+                  [ITEM_OPTS] = "Options",
+                  [ITEM_QUIT] = "Quit",
+              },
+          .disc_paths = {NULL},
+          .minui_dir = {0},
+          .slot_path = {0},
+          .base_path = {0},
+          .bmp_path = {0},
+          .txt_path = {0},
           .disc = -1,
           .total_discs = 0,
+          .slot = 0,
           .save_exists = 0,
-          .preview_exists = 0,
-
-          .items = {
-              [ITEM_CONT] = "Continue",
-              [ITEM_SAVE] = "Save",
-              [ITEM_LOAD] = "Load",
-              [ITEM_OPTS] = "Options",
-              [ITEM_QUIT] = "Quit",
-          }};
+          .preview_exists = 0};
 
 void Menu_init(void) {
 	menu.overlay = SDL_CreateRGBSurface(SDL_SWSURFACE, DEVICE_WIDTH, DEVICE_HEIGHT, FIXED_DEPTH,
@@ -3993,23 +4274,26 @@ static int OptionFrontend_optionChanged(MenuList* list, int i) {
 }
 static MenuList OptionFrontend_menu = {
     .type = MENU_VAR,
-    .on_change = OptionFrontend_optionChanged,
+    .max_width = 0,
+    .desc = NULL,
     .items = NULL,
+    .on_confirm = NULL,
+    .on_change = OptionFrontend_optionChanged,
 };
 static int OptionFrontend_openMenu(MenuList* list, int i) {
 	if (OptionFrontend_menu.items == NULL) {
 		// TODO: where do I free this? I guess I don't :sweat_smile:
 		if (!config.frontend.enabled_count) {
 			int enabled_count = 0;
-			for (int i = 0; i < config.frontend.count; i++) {
-				if (!config.frontend.options[i].lock)
+			for (int idx = 0; idx < config.frontend.count; idx++) {
+				if (!config.frontend.options[idx].lock)
 					enabled_count += 1;
 			}
 			config.frontend.enabled_count = enabled_count;
 			config.frontend.enabled_options = calloc(enabled_count + 1, sizeof(Option*));
 			int j = 0;
-			for (int i = 0; i < config.frontend.count; i++) {
-				Option* item = &config.frontend.options[i];
+			for (int idx = 0; idx < config.frontend.count; idx++) {
+				Option* item = &config.frontend.options[idx];
 				if (item->lock)
 					continue;
 				config.frontend.enabled_options[j] = item;
@@ -4042,6 +4326,7 @@ static int OptionFrontend_openMenu(MenuList* list, int i) {
 
 static int OptionEmulator_optionChanged(MenuList* list, int i) {
 	MenuItem* item = &list->items[i];
+	// NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores) - option IS used in LOG_info below
 	Option* option = OptionList_getOption(&config.core, item->key);
 	LOG_info("%s (%s) changed from `%s` (%s) to `%s` (%s)", item->name, item->key,
 	         item->values[option->value], option->values[option->value], item->values[item->value],
@@ -4059,24 +4344,26 @@ static int OptionEmulator_optionDetail(MenuList* list, int i) {
 }
 static MenuList OptionEmulator_menu = {
     .type = MENU_FIXED,
+    .max_width = 0,
+    .desc = NULL,
+    .items = NULL,
     .on_confirm = OptionEmulator_optionDetail, // TODO: this needs pagination to be truly useful
     .on_change = OptionEmulator_optionChanged,
-    .items = NULL,
 };
 static int OptionEmulator_openMenu(MenuList* list, int i) {
 	if (OptionEmulator_menu.items == NULL) {
 		// TODO: where do I free this? I guess I don't :sweat_smile:
 		if (!config.core.enabled_count) {
 			int enabled_count = 0;
-			for (int i = 0; i < config.core.count; i++) {
-				if (!config.core.options[i].lock)
+			for (int idx = 0; idx < config.core.count; idx++) {
+				if (!config.core.options[idx].lock)
 					enabled_count += 1;
 			}
 			config.core.enabled_count = enabled_count;
 			config.core.enabled_options = calloc(enabled_count + 1, sizeof(Option*));
 			int j = 0;
-			for (int i = 0; i < config.core.count; i++) {
-				Option* item = &config.core.options[i];
+			for (int idx = 0; idx < config.core.count; idx++) {
+				Option* item = &config.core.options[idx];
 				if (item->lock)
 					continue;
 				config.core.enabled_options[j] = item;
@@ -4172,13 +4459,14 @@ static int OptionControls_optionChanged(MenuList* list, int i) {
 }
 static MenuList OptionControls_menu = {
     .type = MENU_INPUT,
+    .max_width = 0,
     .desc =
         "Press A to set and X to clear."
         "\nSupports single button and MENU+button." // TODO: not supported on nano because POWER doubles as MENU
     ,
+    .items = NULL,
     .on_confirm = OptionControls_bind,
-    .on_change = OptionControls_unbind,
-    .items = NULL};
+    .on_change = OptionControls_unbind};
 static int OptionControls_openMenu(MenuList* list, int i) {
 	LOG_info("OptionControls_openMenu");
 
@@ -4274,13 +4562,14 @@ static int OptionShortcuts_unbind(MenuList* list, int i) {
 }
 static MenuList OptionShortcuts_menu = {
     .type = MENU_INPUT,
+    .max_width = 0,
     .desc =
         "Press A to set and X to clear."
         "\nSupports single button and MENU+button." // TODO: not supported on nano because POWER doubles as MENU
     ,
+    .items = NULL,
     .on_confirm = OptionShortcuts_bind,
-    .on_change = OptionShortcuts_unbind,
-    .items = NULL};
+    .on_change = OptionShortcuts_unbind};
 static char* getSaveDesc(void) {
 	switch (config.loaded) {
 	case CONFIG_NONE:
@@ -4352,13 +4641,49 @@ static int OptionSaveChanges_onConfirm(MenuList* list, int i) {
 	return MENU_CALLBACK_EXIT;
 }
 static MenuList OptionSaveChanges_menu = {.type = MENU_LIST,
+                                          .max_width = 0,
+                                          .desc = NULL,
+                                          .items =
+                                              (MenuItem[]){
+                                                  {.name = "Save for console",
+                                                   .desc = NULL,
+                                                   .values = NULL,
+                                                   .key = NULL,
+                                                   .id = 0,
+                                                   .value = 0,
+                                                   .submenu = NULL,
+                                                   .on_confirm = NULL,
+                                                   .on_change = NULL},
+                                                  {.name = "Save for game",
+                                                   .desc = NULL,
+                                                   .values = NULL,
+                                                   .key = NULL,
+                                                   .id = 0,
+                                                   .value = 0,
+                                                   .submenu = NULL,
+                                                   .on_confirm = NULL,
+                                                   .on_change = NULL},
+                                                  {.name = "Restore defaults",
+                                                   .desc = NULL,
+                                                   .values = NULL,
+                                                   .key = NULL,
+                                                   .id = 0,
+                                                   .value = 0,
+                                                   .submenu = NULL,
+                                                   .on_confirm = NULL,
+                                                   .on_change = NULL},
+                                                  {.name = NULL,
+                                                   .desc = NULL,
+                                                   .values = NULL,
+                                                   .key = NULL,
+                                                   .id = 0,
+                                                   .value = 0,
+                                                   .submenu = NULL,
+                                                   .on_confirm = NULL,
+                                                   .on_change = NULL},
+                                              },
                                           .on_confirm = OptionSaveChanges_onConfirm,
-                                          .items = (MenuItem[]){
-                                              {"Save for console"},
-                                              {"Save for game"},
-                                              {"Restore defaults"},
-                                              {NULL},
-                                          }};
+                                          .on_change = NULL};
 static int OptionSaveChanges_openMenu(MenuList* list, int i) {
 	OptionSaveChanges_updateDesc();
 	OptionSaveChanges_menu.desc = getSaveDesc();
@@ -4369,20 +4694,89 @@ static int OptionSaveChanges_openMenu(MenuList* list, int i) {
 static int OptionQuicksave_onConfirm(MenuList* list, int i) {
 	Menu_beforeSleep();
 	PWR_powerOff();
+	return MENU_CALLBACK_NOP; // Never reached (device powers off)
 }
 
 static MenuList options_menu = {.type = MENU_LIST,
-                                .items = (MenuItem[]){
-                                    {"Frontend", "MinUI (" BUILD_DATE " " BUILD_HASH ")",
-                                     .on_confirm = OptionFrontend_openMenu},
-                                    {"Emulator", .on_confirm = OptionEmulator_openMenu},
-                                    {"Controls", .on_confirm = OptionControls_openMenu},
-                                    {"Shortcuts", .on_confirm = OptionShortcuts_openMenu},
-                                    {"Save Changes", .on_confirm = OptionSaveChanges_openMenu},
-                                    {NULL},
-                                    {NULL},
-                                    {NULL},
-                                }};
+                                .max_width = 0,
+                                .desc = NULL,
+                                .items =
+                                    (MenuItem[]){
+                                        {.name = "Frontend",
+                                         .desc = "MinUI (" BUILD_DATE " " BUILD_HASH ")",
+                                         .values = NULL,
+                                         .key = NULL,
+                                         .id = 0,
+                                         .value = 0,
+                                         .submenu = NULL,
+                                         .on_confirm = OptionFrontend_openMenu,
+                                         .on_change = NULL},
+                                        {.name = "Emulator",
+                                         .desc = NULL,
+                                         .values = NULL,
+                                         .key = NULL,
+                                         .id = 0,
+                                         .value = 0,
+                                         .submenu = NULL,
+                                         .on_confirm = OptionEmulator_openMenu,
+                                         .on_change = NULL},
+                                        {.name = "Controls",
+                                         .desc = NULL,
+                                         .values = NULL,
+                                         .key = NULL,
+                                         .id = 0,
+                                         .value = 0,
+                                         .submenu = NULL,
+                                         .on_confirm = OptionControls_openMenu,
+                                         .on_change = NULL},
+                                        {.name = "Shortcuts",
+                                         .desc = NULL,
+                                         .values = NULL,
+                                         .key = NULL,
+                                         .id = 0,
+                                         .value = 0,
+                                         .submenu = NULL,
+                                         .on_confirm = OptionShortcuts_openMenu,
+                                         .on_change = NULL},
+                                        {.name = "Save Changes",
+                                         .desc = NULL,
+                                         .values = NULL,
+                                         .key = NULL,
+                                         .id = 0,
+                                         .value = 0,
+                                         .submenu = NULL,
+                                         .on_confirm = OptionSaveChanges_openMenu,
+                                         .on_change = NULL},
+                                        {.name = NULL,
+                                         .desc = NULL,
+                                         .values = NULL,
+                                         .key = NULL,
+                                         .id = 0,
+                                         .value = 0,
+                                         .submenu = NULL,
+                                         .on_confirm = NULL,
+                                         .on_change = NULL},
+                                        {.name = NULL,
+                                         .desc = NULL,
+                                         .values = NULL,
+                                         .key = NULL,
+                                         .id = 0,
+                                         .value = 0,
+                                         .submenu = NULL,
+                                         .on_confirm = NULL,
+                                         .on_change = NULL},
+                                        {.name = NULL,
+                                         .desc = NULL,
+                                         .values = NULL,
+                                         .key = NULL,
+                                         .id = 0,
+                                         .value = 0,
+                                         .submenu = NULL,
+                                         .on_confirm = NULL,
+                                         .on_change = NULL},
+                                    },
+                                .on_confirm = NULL,
+                                .on_change = NULL};
 
 static void OptionSaveChanges_updateDesc(void) {
 	options_menu.items[4].desc = getSaveDesc();
@@ -4880,7 +5274,7 @@ static void Menu_scale(SDL_Surface* src, SDL_Surface* dst) {
 	int mx = (sw << 16) / rw;
 	int my = (sh << 16) / rh;
 	int ox = (renderer.src_x << 16);
-	int sx = ox;
+	int sx;
 	int sy = (renderer.src_y << 16);
 	int lr = -1;
 	int sr = 0;
@@ -5117,7 +5511,7 @@ static void Menu_loop(void) {
 	int status = STATUS_CONT; // TODO: no longer used?
 	int show_setting = 0;
 	int dirty = 1;
-	int ignore_menu = 0;
+	int menu_input_blocked = 0;
 	int menu_start = 0;
 
 	SDL_Surface* preview =
@@ -5173,35 +5567,28 @@ static void Menu_loop(void) {
 		}
 
 		if (PAD_justPressed(BTN_B) || (BTN_WAKE != BTN_MENU && PAD_tappedMenu(now))) {
-			status = STATUS_CONT;
 			show_menu = 0;
 		} else if (PAD_justPressed(BTN_A)) {
 			switch (selected) {
 			case ITEM_CONT:
 				if (menu.total_discs && rom_disc != menu.disc) {
-					status = STATUS_DISC;
 					char* disc_path = menu.disc_paths[menu.disc];
 					Game_changeDisc(disc_path);
-				} else {
-					status = STATUS_CONT;
 				}
 				show_menu = 0;
 				break;
 
 			case ITEM_SAVE: {
 				Menu_saveState();
-				status = STATUS_SAVE;
 				show_menu = 0;
 			} break;
 			case ITEM_LOAD: {
 				Menu_loadState();
-				status = STATUS_LOAD;
 				show_menu = 0;
 			} break;
 			case ITEM_OPTS: {
 				if (simple_mode) {
 					core.reset();
-					status = STATUS_RESET;
 					show_menu = 0;
 				} else {
 					int old_scaling = screen_scaling;
@@ -5221,7 +5608,6 @@ static void Menu_loop(void) {
 				}
 			} break;
 			case ITEM_QUIT:
-				status = STATUS_QUIT;
 				show_menu = 0;
 				quit = 1; // TODO: tmp?
 				break;
@@ -5499,7 +5885,7 @@ static void limitFF(void) {
 			last_time = now;
 		int elapsed = now - last_time;
 		if (elapsed > 0 && elapsed < 0x80000) {
-			if (elapsed < ff_frame_time) {
+			if ((uint64_t)elapsed < ff_frame_time) {
 				int delay = (ff_frame_time - elapsed) / 1000;
 				if (delay > 0 && delay < 17) { // don't allow a delay any greater than a frame
 					SDL_Delay(delay);

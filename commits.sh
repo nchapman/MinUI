@@ -39,10 +39,14 @@ show() {
 		return 0
 	fi
 
-	local hash=$(git rev-parse --short=8 HEAD 2>/dev/null || echo "unknown")
-	local name=$(basename "$PWD")
-	local date=$(git log -1 --pretty='%ad' --date=format:'%Y-%m-%d' 2>/dev/null || echo "unknown")
-	local repo=$(git config --get remote.origin.url 2>/dev/null || echo "")
+	local hash
+	hash=$(git rev-parse --short=8 HEAD 2>/dev/null || echo "unknown")
+	local name
+	name=$(basename "$PWD")
+	local date
+	date=$(git log -1 --pretty='%ad' --date=format:'%Y-%m-%d' 2>/dev/null || echo "unknown")
+	local repo
+	repo=$(git config --get remote.origin.url 2>/dev/null || echo "")
 
 	# Clean up repo URL (remove git@github.com:, https://github.com/, .git suffix)
 	repo=$(sed -E "s,(^git@github.com:)|(^https?://github.com/)|(.git$)|(/$),,g" <<<"$repo")

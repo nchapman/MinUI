@@ -3980,7 +3980,7 @@ void scaler_c32(uint32_t xmul, uint32_t ymul, void* __restrict src, void* __rest
 	 ((((cG(B) << 1) + (cG(A) * 3)) / 5) & 0x3f) << 5 |                                            \
 	 ((((cB(B) << 1) + (cB(A) * 3)) / 5) & 0x1f))
 
-#define MIN(a, b) (a) < (b) ? (a) : (b)
+#define MIN(a, b) ((int)(a) < (int)(b) ? (a) : (b))
 
 /**
  * Deinterlaced line-doubling scaler with blending.
@@ -4006,12 +4006,12 @@ void scale1x_line(void* __restrict src, void* __restrict dst, uint32_t sw, uint3
 	int ip = sw * FIXED_BPP;
 	int src_stride = 2 * sp / FIXED_BPP;
 	int dst_stride = 2 * dp / FIXED_BPP;
-	int cpy_pitch = MIN(ip, dp);
+	int cpy_pitch = MIN(ip, (int)dp);
 
 	uint16_t k = 0x0000; // Black pixel for blending
 	uint16_t* restrict src_row = (uint16_t*)src;
 	uint16_t* restrict dst_row = (uint16_t*)dst;
-	for (int y = 0; y < sh; y += 2) {
+	for (int y = 0; y < (int)sh; y += 2) {
 		// Copy even line directly
 		memcpy(dst_row, src_row, cpy_pitch);
 		dst_row += dst_stride;
