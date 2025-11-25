@@ -90,11 +90,13 @@ static struct {
 	int av_info_changed; // Flag for SET_SYSTEM_AV_INFO
 	retro_frame_time_callback_t frame_time_cb; // Frame timing callback
 	retro_usec_t frame_time_ref; // Reference frame time in microseconds
+	retro_usec_t frame_time_last; // Last frame timestamp for delta calculation
 } video_state = {.rotation = 0,
                  .geometry_changed = 0,
                  .av_info_changed = 0,
                  .frame_time_cb = NULL,
-                 .frame_time_ref = 0};
+                 .frame_time_ref = 0,
+                 .frame_time_last = 0};
 
 ///////////////////////////////////////
 // Video Scaling Modes
@@ -2722,6 +2724,7 @@ static bool environment_callback(unsigned cmd, void* data) { // copied from pico
 			// NULL callback = unregister
 			video_state.frame_time_cb = NULL;
 			video_state.frame_time_ref = 0;
+			video_state.frame_time_last = 0;
 			break;
 		}
 
@@ -2986,7 +2989,7 @@ static bool environment_callback(unsigned cmd, void* data) { // copied from pico
 		// Determine current throttle mode
 		if (fast_forward) {
 			state->mode = RETRO_THROTTLE_FAST_FORWARD;
-			state->rate = (float)(max_ff_speed + 1); // max_ff_speed: 0=2x, 1=3x, 2=4x, 3=5x
+			state->rate = (float)(max_ff_speed + 1); // max_ff_speed+1: 0→1x, 1→2x, 2→3x, 3→4x
 		} else if (prevent_tearing) {
 			state->mode = RETRO_THROTTLE_VSYNC;
 			state->rate = 1.0f;
@@ -4044,14 +4047,16 @@ static void video_refresh_callback_main(const void* data, unsigned width, unsign
 		int debug_width = width;
 		int debug_height = height;
 
-		if (rotated_data != frame_data &&
-		    (video_state.rotation == ROTATION_90 || video_state.rotation == ROTATION_270)) {
-			// Use swapped dimensions and rotation buffer pitch for 90°/270° rotations
-			debug_width = height;
-			debug_height = width;
+		if (rotated_data != frame_data) {
+			// Use rotation buffer pitch when rotation was applied
 			pitch_in_pixels = rotation_buffer.pitch / sizeof(uint16_t);
+			if (video_state.rotation == ROTATION_90 || video_state.rotation == ROTATION_270) {
+				// Swap dimensions for 90°/270° rotations
+				debug_width = height;
+				debug_height = width;
+			}
 		} else {
-			// Use original dimensions and pitch for 0°/180° or when rotation was skipped
+			// Use original pitch when rotation was skipped
 			pitch_in_pixels = rgb565_pitch / sizeof(uint16_t);
 		}
 
@@ -6250,10 +6255,23 @@ static void* coreThread(void* arg) {
 		pthread_mutex_unlock(&core_mx);
 
 		if (run) {
-			// Call frame time callback if registered
+			// Call frame time callback if registered (per libretro spec)
+			// Passes delta time since last frame, or reference value during fast-forward
 			if (video_state.frame_time_cb) {
-				retro_usec_t current_time = SDL_GetTicks() * 1000; // Convert ms to µs
-				video_state.frame_time_cb(current_time);
+				retro_usec_t now = getMicroseconds();
+				retro_usec_t delta;
+				if (fast_forward) {
+					// During fast-forward, use the reference frame time
+					delta = video_state.frame_time_ref;
+				} else if (video_state.frame_time_last == 0) {
+					// First frame - use reference as initial delta
+					delta = video_state.frame_time_ref;
+				} else {
+					// Normal playback - calculate actual delta
+					delta = now - video_state.frame_time_last;
+				}
+				video_state.frame_time_last = now;
+				video_state.frame_time_cb(delta);
 			}
 
 			core.run();
@@ -6387,10 +6405,23 @@ int main(int argc, char* argv[]) {
 	while (!quit) {
 		GFX_startFrame();
 
-		// Call frame time callback if registered
+		// Call frame time callback if registered (per libretro spec)
+		// Passes delta time since last frame, or reference value during fast-forward
 		if (video_state.frame_time_cb) {
-			retro_usec_t current_time = SDL_GetTicks() * 1000; // Convert ms to µs
-			video_state.frame_time_cb(current_time);
+			retro_usec_t now = getMicroseconds();
+			retro_usec_t delta;
+			if (fast_forward) {
+				// During fast-forward, use the reference frame time
+				delta = video_state.frame_time_ref;
+			} else if (video_state.frame_time_last == 0) {
+				// First frame - use reference as initial delta
+				delta = video_state.frame_time_ref;
+			} else {
+				// Normal playback - calculate actual delta
+				delta = now - video_state.frame_time_last;
+			}
+			video_state.frame_time_last = now;
+			video_state.frame_time_cb(delta);
 		}
 
 		if (!thread_video) {
