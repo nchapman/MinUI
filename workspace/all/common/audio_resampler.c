@@ -164,39 +164,3 @@ int AudioResampler_estimateOutput(AudioResampler* resampler, int input_frames, f
 	double ratio = (double)resampler->sample_rate_out / resampler->sample_rate_in;
 	return (int)(input_frames * ratio / ratio_adjust + 0.5);
 }
-
-// ============================================================================
-// Legacy API implementation (backwards compatibility)
-// ============================================================================
-
-/**
- * Legacy single-frame processing using nearest-neighbor.
- * Kept for backwards compatibility during transition.
- */
-ResampleResultLegacy AudioResampler_processFrame(AudioResampler* resampler, AudioRingBuffer* buffer,
-                                                 SND_Frame frame) {
-	// Use a static diff accumulator for the old Bresenham algorithm
-	// This maintains the original behavior
-	static int diff = 0;
-	ResampleResultLegacy result = {0, 0};
-
-	// Decide if we should write this frame to output
-	if (diff < resampler->sample_rate_out) {
-		// Write frame to ring buffer
-		buffer->frames[buffer->write_pos] = frame;
-		buffer->write_pos++;
-		if (buffer->write_pos >= buffer->capacity)
-			buffer->write_pos = 0;
-
-		result.wrote_frame = 1;
-		diff += resampler->sample_rate_in;
-	}
-
-	// Decide if we've consumed an input frame
-	if (diff >= resampler->sample_rate_out) {
-		result.consumed = 1;
-		diff -= resampler->sample_rate_out;
-	}
-
-	return result;
-}

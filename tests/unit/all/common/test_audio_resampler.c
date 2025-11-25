@@ -11,7 +11,6 @@
  * - Equal rates (passthrough)
  * - Dynamic rate adjustment
  * - Buffer wrapping behavior
- * - Legacy API compatibility
  */
 
 #include "../../../support/unity/unity.h"
@@ -403,45 +402,6 @@ void test_estimateOutput_approximates_correctly(void) {
 }
 
 ///////////////////////////////
-// Legacy API Tests (backwards compatibility)
-///////////////////////////////
-
-void test_legacy_processFrame_still_works(void) {
-	AudioResampler resampler;
-	AudioResampler_init(&resampler, 44100, 48000);
-
-	SND_Frame frame = {.left = 100, .right = 200};
-	ResampleResultLegacy result = AudioResampler_processFrame(&resampler, &test_buffer, frame);
-
-	// Legacy API should still function
-	TEST_ASSERT_TRUE(result.wrote_frame == 0 || result.wrote_frame == 1);
-	TEST_ASSERT_TRUE(result.consumed == 0 || result.consumed == 1);
-}
-
-void test_legacy_upsample_pattern(void) {
-	AudioResampler resampler;
-	AudioResampler_init(&resampler, 44100, 48000);
-
-	int writes = 0;
-	int consumes = 0;
-
-	// Process 100 frames using legacy API
-	for (int i = 0; i < 200 && consumes < 100; i++) {
-		SND_Frame frame = {.left = (int16_t)consumes, .right = (int16_t)consumes};
-		ResampleResultLegacy result = AudioResampler_processFrame(&resampler, &test_buffer, frame);
-
-		if (result.wrote_frame)
-			writes++;
-		if (result.consumed)
-			consumes++;
-	}
-
-	// Should produce ~109 output for 100 input
-	TEST_ASSERT_INT_WITHIN(5, 109, writes);
-	TEST_ASSERT_EQUAL_INT(100, consumes);
-}
-
-///////////////////////////////
 // Test Runner
 ///////////////////////////////
 
@@ -483,10 +443,6 @@ int main(void) {
 	RUN_TEST(test_empty_input_returns_zero);
 	RUN_TEST(test_null_buffer_counts_output_only);
 	RUN_TEST(test_estimateOutput_approximates_correctly);
-
-	// Legacy API
-	RUN_TEST(test_legacy_processFrame_still_works);
-	RUN_TEST(test_legacy_upsample_pattern);
 
 	return UNITY_END();
 }

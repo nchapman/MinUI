@@ -113,8 +113,8 @@ The environment callback is the primary interface for core-frontend communicatio
 | 54 | `SET_CORE_OPTIONS_INTL` | ✅ Uses US locale options |
 | 55 | `SET_CORE_OPTIONS_DISPLAY` | ⚠️ Stub - no visibility control |
 | 57 | `GET_DISK_CONTROL_INTERFACE_VERSION` | ✅ Returns 1 |
-| 62 | `SET_AUDIO_BUFFER_STATUS_CALLBACK` | ✅ Full - reports buffer occupancy for frameskip |
 | 58 | `SET_DISK_CONTROL_EXT_INTERFACE` | ✅ Full extended disk control |
+| 62 | `SET_AUDIO_BUFFER_STATUS_CALLBACK` | ✅ Full - reports buffer occupancy for frameskip |
 | 65 | `SET_CONTENT_INFO_OVERRIDE` | ⚠️ Stub - acknowledged only |
 | 70 | `SET_VARIABLE` | ✅ Allows cores to set options |
 | 71 | `GET_THROTTLE_STATE` | ✅ Full - reports FF/vsync/unblocked |

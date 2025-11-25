@@ -127,27 +127,4 @@ int AudioResampler_isNeeded(int rate_in, int rate_out);
  */
 int AudioResampler_estimateOutput(AudioResampler* resampler, int input_frames, float ratio_adjust);
 
-// ============================================================================
-// Legacy API (for backwards compatibility during transition)
-// ============================================================================
-
-/**
- * Result of processing a single frame (legacy API)
- * @deprecated Use AudioResampler_resample instead
- */
-typedef struct ResampleResultLegacy {
-	int wrote_frame; // 1 if frame was written to buffer, 0 if skipped
-	int consumed; // 1 if should advance to next input frame, 0 if reuse
-} ResampleResultLegacy;
-
-/**
- * Processes a single audio frame (legacy nearest-neighbor API).
- * @deprecated Use AudioResampler_resample for better quality
- *
- * Maintained for backwards compatibility. Uses the old Bresenham-like
- * algorithm that drops or duplicates samples.
- */
-ResampleResultLegacy AudioResampler_processFrame(AudioResampler* resampler, AudioRingBuffer* buffer,
-                                                 SND_Frame frame);
-
 #endif // __AUDIO_RESAMPLER_H__
