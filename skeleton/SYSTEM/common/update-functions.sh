@@ -50,8 +50,8 @@ atomic_system_update() {
 		fi
 	fi
 
-	# Move old .tmp_update out of the way (original approach)
-	mv "$_sdcard/.tmp_update" "$_sdcard/.tmp_update-old" 2>/dev/null
+	# Move old .tmp_update out of the way (using consistent -prev suffix)
+	mv "$_sdcard/.tmp_update" "$_sdcard/.tmp_update-prev" 2>/dev/null
 
 	# Determine which unzip to use
 	# Some platforms bundle unzip (tg5040, trimuismart, my282, rg35xxplus)
@@ -64,17 +64,44 @@ atomic_system_update() {
 
 	# Extract update
 	if "$_unzip_cmd" -o "$_update_zip" -d "$_sdcard" >> "$_log" 2>&1; then
+		# SUCCESS: Unzip completed successfully
 		log_info "Unzip complete"
+		rm -f "$_update_zip"
+		rm -rf "$_sdcard/.tmp_update-prev"
+		rm -rf "$_system_dir-prev"
+		return 0
 	else
+		# FAILURE: Unzip failed - restore backups
 		_exit_code=$?
 		log_error "Unzip failed with exit code $_exit_code"
-	fi
-	rm -f "$_update_zip"
-	rm -rf "$_sdcard/.tmp_update-old"
 
-	# Success - remove .system backup
-	rm -rf "$_system_dir-prev"
-	return 0
+		# Restore .system backup
+		if [ -d "$_system_dir-prev" ]; then
+			log_info "Restoring .system from backup..."
+			rm -rf "$_system_dir"
+			if mv "$_system_dir-prev" "$_system_dir"; then
+				log_info ".system backup restored successfully"
+			else
+				log_error "CRITICAL: Failed to restore .system backup!"
+			fi
+		fi
+
+		# Restore .tmp_update backup
+		if [ -d "$_sdcard/.tmp_update-prev" ]; then
+			log_info "Restoring .tmp_update from backup..."
+			rm -rf "$_sdcard/.tmp_update"
+			if mv "$_sdcard/.tmp_update-prev" "$_sdcard/.tmp_update"; then
+				log_info ".tmp_update backup restored successfully"
+			else
+				log_error "CRITICAL: Failed to restore .tmp_update backup!"
+			fi
+		fi
+
+		# Delete failed ZIP to prevent update loop
+		rm -f "$_update_zip"
+		log_info "Deleted failed update file"
+		return 1
+	fi
 }
 
 #######################################
