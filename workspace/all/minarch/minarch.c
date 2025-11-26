@@ -5960,9 +5960,9 @@ static void Menu_loop(void) {
 				    0);
 			GFX_blitButtonGroup((char*[]){"B", "BACK", "A", "OKAY", NULL}, 1, screen, 1);
 
-			// list
-			oy = (((DEVICE_HEIGHT / FIXED_SCALE) - ui.padding * 2) -
-			      (MENU_ITEM_COUNT * ui.pill_height)) /
+			// Vertically center the menu items
+			oy = (((DEVICE_HEIGHT / FIXED_SCALE) - DP(ui.padding * 2)) -
+			      DP(MENU_ITEM_COUNT * ui.pill_height)) /
 			     2;
 			for (int i = 0; i < MENU_ITEM_COUNT; i++) {
 				char* item = menu.items[i];

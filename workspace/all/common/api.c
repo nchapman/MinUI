@@ -111,41 +111,9 @@ void UI_initLayout(int screen_width, int screen_height, float diagonal_inches) {
 	raw_dp_scale *= SCALE_MODIFIER;
 #endif
 
-	// Snap dp_scale to favorable integer ratios for cleaner asset scaling
-	// These ratios minimize rounding errors when scaling from @1x, @2x, @3x, @4x assets
-	struct {
-		int num, den;
-	} favorable_ratios[] = {
-	    {1, 1}, // 1.0   - @1x: ×1.0
-	    {4, 3}, // 1.333 - @1x: ×1.333, @2x: ×0.666
-	    {3, 2}, // 1.5   - @1x: ×1.5, @2x: ×0.75
-	    {5, 3}, // 1.666 - @2x: ×0.833
-	    {2, 1}, // 2.0   - @2x: ×1.0
-	    {5, 2}, // 2.5   - @2x: ×1.25, @3x: ×0.833
-	    {3, 1}, // 3.0   - @3x: ×1.0
-	    {4, 1} // 4.0   - @4x: ×1.0
-	};
-	int num_ratios = sizeof(favorable_ratios) / sizeof(favorable_ratios[0]);
-
-	// Find closest favorable ratio
-	int best_num = favorable_ratios[0].num;
-	int best_den = favorable_ratios[0].den;
-	float min_diff = fabsf(raw_dp_scale - (float)best_num / best_den);
-
-	for (int i = 1; i < num_ratios; i++) {
-		float ratio_val = (float)favorable_ratios[i].num / favorable_ratios[i].den;
-		float diff = fabsf(raw_dp_scale - ratio_val);
-		if (diff < min_diff) {
-			min_diff = diff;
-			best_num = favorable_ratios[i].num;
-			best_den = favorable_ratios[i].den;
-		}
-	}
-
-	gfx_dp_scale = (float)best_num / best_den;
-
-	LOG_info("UI_initLayout: raw_dp_scale=%.3f → snapped to %d/%d = %.3f (diff=%.3f)\n",
-	         raw_dp_scale, best_num, best_den, gfx_dp_scale, min_diff);
+	// Use the calculated dp_scale directly (no snapping to preserve PPI accuracy)
+	// Asset-level even-pixel adjustments handle rounding where needed
+	gfx_dp_scale = raw_dp_scale;
 
 	// Bounds for layout calculation
 	const int MIN_PILL = 28;
@@ -195,13 +163,26 @@ void UI_initLayout(int screen_width, int screen_height, float diagonal_inches) {
 	ui.padding = DEFAULT_PADDING;
 
 	// Adjust pill_height so it produces even physical pixels (for alignment)
+	// May need to adjust by 2dp if dp_scale is fractional (e.g., 1.5: 30→45, 31→47, 32→48)
 	int pill_px = DP(ui.pill_height);
 	if (pill_px % 2 != 0) {
+		LOG_debug("  Even-pixel adj: pill_px=%d (odd)\n", pill_px);
 		// Try increasing first (prefer slightly larger)
-		if (DP(ui.pill_height + 1) <= DP(MAX_PILL)) {
-			ui.pill_height++;
+		int adjusted = ui.pill_height + 1;
+		while (adjusted <= MAX_PILL && DP(adjusted) % 2 != 0) {
+			adjusted++;
+		}
+		if (adjusted <= MAX_PILL) {
+			ui.pill_height = adjusted;
+			LOG_debug("  → Increased to %ddp (%dpx)\n", ui.pill_height, DP(ui.pill_height));
 		} else {
-			ui.pill_height--;
+			// Can't increase, try decreasing
+			adjusted = ui.pill_height - 1;
+			while (adjusted >= MIN_PILL && DP(adjusted) % 2 != 0) {
+				adjusted--;
+			}
+			ui.pill_height = adjusted;
+			LOG_debug("  → Decreased to %ddp (%dpx)\n", ui.pill_height, DP(ui.pill_height));
 		}
 	}
 
