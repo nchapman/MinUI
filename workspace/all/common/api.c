@@ -61,7 +61,7 @@ uint32_t RGB_DARK_GRAY;
 // Display Points (DP) scaling system
 ///////////////////////////////
 
-// Global display scale factor (PPI / 160)
+// Global display scale factor (PPI / 144)
 float gfx_dp_scale = 2.0f; // Default to 2x until UI_initLayout is called
 
 // Runtime-calculated UI layout parameters
@@ -83,9 +83,8 @@ UI_Layout ui = {
  *
  * DP Scale Calculation:
  *   1. Calculate PPI: sqrt(width² + height²) / diagonal_inches
- *   2. Calculate raw dp_scale: ppi / 160.0 (Android MDPI baseline)
- *   3. Snap to favorable fraction (4/3, 3/2, 5/3, etc.) for cleaner rounding
- *   4. Apply optional SCALE_MODIFIER if defined in platform.h
+ *   2. Calculate raw dp_scale: ppi / 144.0 (handheld gaming device baseline)
+ *   3. Apply optional SCALE_MODIFIER if defined in platform.h
  *
  * Row Fitting Algorithm:
  *   - Try 8→6 rows (prefer more content)
@@ -104,7 +103,7 @@ void UI_initLayout(int screen_width, int screen_height, float diagonal_inches) {
 	// Calculate PPI and dp_scale
 	float diagonal_px = sqrtf((float)(screen_width * screen_width + screen_height * screen_height));
 	float ppi = diagonal_px / diagonal_inches;
-	float raw_dp_scale = ppi / 160.0f;
+	float raw_dp_scale = ppi / 144.0f;
 
 	// Apply platform scale modifier if defined
 #ifdef SCALE_MODIFIER

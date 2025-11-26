@@ -32,9 +32,9 @@
  *
  * Core formula:
  *   ppi = sqrt(width² + height²) / diagonal_inches
- *   dp_scale = ppi / 160.0  (160 = Android MDPI baseline)
+ *   dp_scale = ppi / 144.0  (144 = handheld gaming device baseline)
  *
- * Example: Miyoo Mini (640x480, 2.8") → 286 PPI → dp_scale ≈ 1.79
+ * Example: Miyoo Mini (640x480, 2.8") → 286 PPI → dp_scale ≈ 1.99
  *
  * Usage:
  *   DP(30)           // Convert 30dp to physical pixels
