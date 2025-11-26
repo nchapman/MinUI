@@ -53,8 +53,17 @@ atomic_system_update() {
 	# Move old .tmp_update out of the way (original approach)
 	mv "$_sdcard/.tmp_update" "$_sdcard/.tmp_update-old" 2>/dev/null
 
+	# Determine which unzip to use
+	# Some platforms bundle unzip (tg5040, trimuismart, my282, rg35xxplus)
+	# Others rely on stock firmware's unzip in PATH (miyoomini, rg35xx, etc.)
+	if [ -f "./unzip" ]; then
+		_unzip_cmd="./unzip"
+	else
+		_unzip_cmd="unzip"
+	fi
+
 	# Extract update
-	if unzip -o "$_update_zip" -d "$_sdcard" >> "$_log" 2>&1; then
+	if "$_unzip_cmd" -o "$_update_zip" -d "$_sdcard" >> "$_log" 2>&1; then
 		log_info "Unzip complete"
 	else
 		_exit_code=$?
