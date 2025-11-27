@@ -6,27 +6,34 @@ As of the prebuilt cores migration, LessUI uses a **template-based system** to g
 
 **Problem**: Previously, each core's `.pak` directory was duplicated across 12 platforms (111 pak directories total), with only minor variations between them.
 
-**Solution**: Single source of truth in `skeleton/TEMPLATES/` that generates all platform-specific paks during the build process.
+**Solution**: Single source of truth in `workspace/all/paks/Emus/` that generates all platform-specific paks during the build process.
 
 ## Directory Structure
 
 ```
-skeleton/
-├── TEMPLATES/
-│   ├── minarch-paks/           # Template system for libretro core paks
-│   │   ├── platforms.json      # Platform metadata (nice prefix, default settings)
-│   │   ├── cores.json          # Core definitions (emu_exe, architecture requirements)
-│   │   ├── launch.sh.template  # Launch script template (shared by all cores)
-│   │   └── configs/            # Config templates (one per core)
-│   │       ├── GB.cfg
-│   │       ├── GBA.cfg
-│   │       ├── VB.cfg
-│   │       └── ...
-│   └── paks/                   # Direct paks (copied as-is to all platforms)
-│       └── PAK.pak/
-│           └── launch.sh
-└── SYSTEM/
-    └── (generated during build)
+workspace/all/paks/
+├── Emus/                       # Template system for libretro core paks
+│   ├── platforms.json          # Platform metadata (nice prefix, default settings)
+│   ├── cores.json              # Core definitions (emu_exe, architecture requirements)
+│   ├── launch.sh.template      # Launch script template (shared by all cores)
+│   ├── configs/                # Config templates (one per core)
+│   │   ├── base/               # Default configs for all platforms
+│   │   │   ├── GB/default.cfg
+│   │   │   ├── GBA/default.cfg
+│   │   │   └── ...
+│   │   └── <platform>/         # Platform-specific overrides
+│   │       └── <core>/default.cfg
+│   └── cores-override/         # Local core zips for development
+├── Clock/                      # Tool paks
+├── Input/
+├── Files/
+├── Bootlogo/
+└── Wifi/
+
+skeleton/TEMPLATES/
+└── paks/                       # Direct paks (copied as-is to all platforms)
+    └── PAK.pak/
+        └── launch.sh
 ```
 
 ## How It Works
@@ -167,7 +174,7 @@ Or manually:
    }
    ```
 
-2. **Create config template** at `skeleton/TEMPLATES/minarch-paks/configs/NEWCORE.cfg`:
+2. **Create config template** at `workspace/all/paks/Emus/configs/base/NEWCORE/default.cfg`:
    ```ini
    {{PLATFORM_MINARCH_SETTING}}
 
@@ -206,7 +213,7 @@ All existing cores will now be generated for the new platform.
 
 ## Modifying a Core's Config
 
-1. **Edit the template** at `skeleton/TEMPLATES/paks/configs/<CORE>.cfg`
+1. **Edit the template** at `workspace/all/paks/Emus/configs/base/<CORE>/default.cfg`
 
 2. **Regenerate paks**:
    ```bash
@@ -218,7 +225,7 @@ Changes will apply to all platforms automatically.
 
 ## Modifying Platform Settings
 
-1. **Edit `skeleton/TEMPLATES/platforms.json`**
+1. **Edit `workspace/all/paks/Emus/platforms.json`**
 
 2. **Regenerate paks**:
    ```bash

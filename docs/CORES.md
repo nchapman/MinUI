@@ -46,14 +46,14 @@ cores-download:
 
 ### Local Override (Development)
 
-For testing custom cores, place override zips in `workspace/cores-override/`:
+For testing custom cores, place override zips in `workspace/all/paks/Emus/cores-override/`:
 
 ```bash
-cp ~/Downloads/linux-cortex-a7.zip workspace/cores-override/
+cp ~/Downloads/linux-cortex-a7.zip workspace/all/paks/Emus/cores-override/
 make all  # Uses local zip instead of downloading
 ```
 
-See `workspace/cores-override/README.md` for details.
+See `workspace/all/paks/Emus/cores-override/README.md` for details.
 
 ## Available Cores
 
@@ -571,7 +571,7 @@ static bool environment_callback(unsigned cmd, void* data) {
 | File | Purpose |
 |------|---------|
 | `Makefile` | Main orchestration makefile, includes `cores-download` target |
-| `workspace/cores-override/` | Local override directory for development |
+| `workspace/all/paks/Emus/cores-override/` | Local override directory for development |
 
 ### Core Loading and Management
 
@@ -592,8 +592,8 @@ static bool environment_callback(unsigned cmd, void* data) {
 
 | File | Purpose |
 |------|---------|
-| `skeleton/TEMPLATES/minarch-paks/launch.sh.template` | Launch script template for all emulators |
-| `skeleton/TEMPLATES/minarch-paks/configs/<core>.cfg` | Default options and bindings per core |
+| `workspace/all/paks/Emus/launch.sh.template` | Launch script template for all emulators |
+| `workspace/all/paks/Emus/configs/<core>.cfg` | Default options and bindings per core |
 | `skeleton/SYSTEM/<platform>/system.cfg` | System-wide frontend defaults |
 
 ### Utilities
@@ -615,8 +615,8 @@ static bool environment_callback(unsigned cmd, void* data) {
 Since cores are built externally, adding a core to LessUI involves:
 
 1. **Add to minarch-cores** - Core must be built in the external minarch-cores repository
-2. **Create pak template** - Add core configuration to `skeleton/TEMPLATES/minarch-paks/cores.json`
-3. **Add core config** - Create `skeleton/TEMPLATES/minarch-paks/configs/<core>.cfg`
+2. **Create pak template** - Add core configuration to `workspace/all/paks/Emus/cores.json`
+3. **Add core config** - Create `workspace/all/paks/Emus/configs/<core>.cfg`
 4. **Generate paks** - Run `./scripts/generate-paks.sh all` to create platform paks
 5. **Test** - Verify core loads, save states work, and in-game menu functions correctly
 

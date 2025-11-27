@@ -83,10 +83,10 @@ None remaining!
 
 ## Future Enhancements
 
-- [ ] **Emulator paks** - Consider migrating from `skeleton/TEMPLATES/minarch-paks/` to `workspace/all/paks/`
-  - Lower priority - current template system works well
-  - Would unify all paks in one location
-  - Evaluate after tool paks are complete
+- [x] **Emulator paks** - Migrated from `skeleton/TEMPLATES/minarch-paks/` to `workspace/all/paks/Emus/`
+  - Template system preserved (works well for uniform emulator paks)
+  - All pak sources now unified in `workspace/all/paks/`
+  - cores-override also moved to `workspace/all/paks/Emus/cores-override/`
 
 - [ ] **Third-party pak support** - Make it easy to integrate external paks
   - Document pak.json schema
@@ -105,6 +105,5 @@ None remaining!
 Remaining paks are platform-specific (ADBD, SSH, Splore, etc.). These can be migrated as needed or left as platform-specific since they only apply to 1-2 platforms each.
 
 Consider:
-1. Emulator paks - Evaluate if template system should migrate to unified paks
-2. Third-party pak documentation - Make it easy for external developers to contribute paks
-3. Dependency management - Auto-download binaries like jq, syncthing, etc.
+1. Third-party pak documentation - Make it easy for external developers to contribute paks
+2. Dependency management - Auto-download binaries like jq, syncthing, etc.

@@ -61,7 +61,7 @@ workspace/all/paks/
         ├── miyoomini/DinguxCommander
         └── magicmini/351Files
 
-# Note: Emulator paks remain in skeleton/TEMPLATES/minarch-paks/
+# Note: Emulator paks are in workspace/all/paks/Emus/
 # They use a template system due to high uniformity across cores
 ```
 
@@ -426,7 +426,7 @@ For future pak migrations:
 
 ## Relationship to Emulator Paks
 
-The existing `skeleton/TEMPLATES/minarch-paks/` system for emulators remains largely unchanged because:
+The emulator pak templates in `workspace/all/paks/Emus/` remain largely unchanged because:
 
 1. **High uniformity** - All emulator paks have identical structure
 2. **Template efficiency** - One template generates ~200+ paks
@@ -518,5 +518,5 @@ cp workspace/all/clock/makefile paks/MyApp.pak/src/makefile
 ## References
 
 - Jose Gonzalez's MinUI paks: https://github.com/josegonzalez?tab=repositories&q=minui
-- Current minarch-paks system: `skeleton/TEMPLATES/minarch-paks/`
-- Current pak generation: `scripts/generate-paks.sh`
+- Emulator pak templates: `workspace/all/paks/Emus/`
+- Pak generation script: `scripts/generate-paks.sh`

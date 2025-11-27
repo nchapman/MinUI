@@ -180,21 +180,21 @@ system:
 
 # Deploy shared libretro cores from minarch-cores GitHub releases
 # Downloads and extracts cores for both ARM architectures
-# Override: Place zips in workspace/cores-override/ to skip download
+# Override: Place zips in workspace/all/paks/Emus/cores-override/ to skip download
 cores-download:
 	@mkdir -p build/.system/cores/a7 build/.system/cores/a53
-	@if [ -f workspace/cores-override/linux-cortex-a7.zip ]; then \
-		echo "Using local a7 cores from workspace/cores-override/..."; \
-		unzip -o -j -q workspace/cores-override/linux-cortex-a7.zip -d build/.system/cores/a7; \
+	@if [ -f workspace/all/paks/Emus/cores-override/linux-cortex-a7.zip ]; then \
+		echo "Using local a7 cores from workspace/all/paks/Emus/cores-override/..."; \
+		unzip -o -j -q workspace/all/paks/Emus/cores-override/linux-cortex-a7.zip -d build/.system/cores/a7; \
 	else \
 		echo "Downloading a7 cores (ARM32 - all 32-bit platforms) from minarch-cores $(MINARCH_CORES_VERSION)..."; \
 		curl -sL $(CORES_BASE)/linux-cortex-a7.zip -o /tmp/lessui-cores-a7.zip; \
 		unzip -o -j -q /tmp/lessui-cores-a7.zip -d build/.system/cores/a7; \
 		rm /tmp/lessui-cores-a7.zip; \
 	fi
-	@if [ -f workspace/cores-override/linux-cortex-a53.zip ]; then \
-		echo "Using local a53 cores from workspace/cores-override/..."; \
-		unzip -o -j -q workspace/cores-override/linux-cortex-a53.zip -d build/.system/cores/a53; \
+	@if [ -f workspace/all/paks/Emus/cores-override/linux-cortex-a53.zip ]; then \
+		echo "Using local a53 cores from workspace/all/paks/Emus/cores-override/..."; \
+		unzip -o -j -q workspace/all/paks/Emus/cores-override/linux-cortex-a53.zip -d build/.system/cores/a53; \
 	else \
 		echo "Downloading a53 cores (ARM64 - all 64-bit platforms) from minarch-cores $(MINARCH_CORES_VERSION)..."; \
 		curl -sL $(CORES_BASE)/linux-cortex-a53.zip -o /tmp/lessui-cores-a53.zip; \

@@ -14,7 +14,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEMPLATE_DIR="$PROJECT_ROOT/skeleton/TEMPLATES/minarch-paks"
+TEMPLATE_DIR="$PROJECT_ROOT/workspace/all/paks/Emus"
 DIRECT_PAKS_DIR="$PROJECT_ROOT/skeleton/TEMPLATES/paks"
 BUILD_DIR="$PROJECT_ROOT/build"
 

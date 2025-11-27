@@ -118,11 +118,12 @@ LessUI uses **three systems** for platform-specific `.pak` directories:
 - Platform-specific resources supported via `<platform>/` directories
 - Hybrid pattern supported (native for some platforms, shell-only for others)
 
-**2. MinArch Paks** (`skeleton/TEMPLATES/minarch-paks/`) - Template-based for libretro cores:
+**2. Emulator Paks** (`workspace/all/paks/Emus/`) - Template-based for libretro cores:
 - `platforms.json` - Platform metadata (nice prefix, default settings)
 - `cores.json` - Core definitions (43 cores, all included in base install)
 - `launch.sh.template` - Shared launch script template
 - `configs/` - Config templates for all supported cores
+- `cores-override/` - Local core zips for development
 
 **3. Direct Paks** (`skeleton/TEMPLATES/paks/`) - Copied as-is for special cases:
 - PAK.pak - Native application launcher (copied to all platforms)
@@ -146,8 +147,8 @@ make system PLATFORM=miyoomini  # Constructs complete tool paks
 
 **Adding a new emulator core:**
 1. Build core in external [minarch-cores repository](https://github.com/nchapman/minarch-cores)
-2. Add to `skeleton/TEMPLATES/minarch-paks/cores.json`
-3. Create `skeleton/TEMPLATES/minarch-paks/configs/<CORE>.cfg`
+2. Add to `workspace/all/paks/Emus/cores.json`
+3. Create `workspace/all/paks/Emus/configs/base/<CORE>/default.cfg`
 4. Run `./scripts/generate-paks.sh all`
 
 See `docs/cross-platform-paks.md` for comprehensive tool pak documentation.
@@ -376,7 +377,7 @@ See `.clang-format` for complete style definition.
 | Platform definitions | `workspace/<platform>/platform/platform.h` |
 | Common definitions | `workspace/all/common/defines.h` |
 | Tool paks | `workspace/all/paks/` |
-| Emulator pak templates | `skeleton/TEMPLATES/minarch-paks/` |
+| Emulator pak templates | `workspace/all/paks/Emus/` |
 | Pak generation script | `scripts/generate-paks.sh` |
 | Test suite | `tests/unit/all/common/test_utils.c` |
 | Build orchestration | `Makefile` (host-side) |

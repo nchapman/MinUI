@@ -6,8 +6,8 @@ Place prerelease or custom core builds here to override the normal GitHub downlo
 
 1. Copy your prerelease core zips here:
    ```bash
-   cp ~/Downloads/linux-cortex-a7.zip workspace/cores-override/
-   cp ~/Downloads/linux-cortex-a53.zip workspace/cores-override/
+   cp ~/Downloads/linux-cortex-a7.zip workspace/all/paks/Emus/cores-override/
+   cp ~/Downloads/linux-cortex-a53.zip workspace/all/paks/Emus/cores-override/
    ```
 
 2. Run your build as normal:
@@ -29,5 +29,5 @@ You can provide one or both files. Any missing files will be downloaded from the
 When you're done testing, just delete the zip files to return to normal GitHub downloads:
 
 ```bash
-rm workspace/cores-override/*.zip
+rm workspace/all/paks/Emus/cores-override/*.zip
 ```

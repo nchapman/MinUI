@@ -176,7 +176,7 @@ Application logs are created via **shell redirection** in launch scripts:
 # skeleton/SYSTEM/miyoomini/paks/MinUI.pak/launch.sh
 minui.elf &> $LOGS_PATH/minui.log
 
-# skeleton/TEMPLATES/minarch-paks/launch.sh.template
+# workspace/all/paks/Emus/launch.sh.template
 minarch.elf "$CORE" "$ROM" &> "$LOGS_PATH/$EMU_TAG.log"
 ```
 

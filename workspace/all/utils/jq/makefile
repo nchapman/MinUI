@@ -31,7 +31,7 @@ PRODUCT = build/$(PLATFORM)/jq
 
 $(PRODUCT):
 	mkdir -p build/$(PLATFORM)
-	curl -f -o $(PRODUCT) -sSL https://github.com/jqlang/jq/releases/download/jq-$(JQ_VERSION)/$(JQ_BINARY)
+	wget -q -O $(PRODUCT) https://github.com/jqlang/jq/releases/download/jq-$(JQ_VERSION)/$(JQ_BINARY)
 	chmod +x $(PRODUCT)
 
 all: $(PRODUCT)

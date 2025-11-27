@@ -1,7 +1,7 @@
 #!/bin/bash
 # Helper script to compare emulator configs across platforms
 
-CONFIGS_DIR="skeleton/TEMPLATES/minarch-paks/configs"
+CONFIGS_DIR="workspace/all/paks/Emus/configs"
 
 # Colors
 RED='\033[0;31m'
