@@ -149,6 +149,9 @@ extern int is_560p; // Set to 1 for 560p screen variant
 #define FIXED_WIDTH (is_560p ? 752 : 640) // Screen width: 752px (560p) or 640px (standard)
 #define FIXED_HEIGHT (is_560p ? 560 : 480) // Screen height: 560px (560p) or 480px (standard)
 
+// Page buffer overscaling (560p uses less to save memory)
+#define PAGE_SCALE (is_560p ? 2 : 3)
+
 ///////////////////////////////
 // Platform-Specific Paths and Settings
 ///////////////////////////////

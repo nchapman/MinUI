@@ -313,11 +313,16 @@
 
 ///////////////////////////////
 // Derived display constants
-// Calculated from platform-defined values
 ///////////////////////////////
 
 /**
  * Standard display buffer calculations.
+ *
+ * Platforms define FIXED_WIDTH and FIXED_HEIGHT in their platform.h:
+ * - Fixed hardware: Simple constant (e.g., #define FIXED_WIDTH 640)
+ * - Runtime variants: Macro with ternary (e.g., #define FIXED_WIDTH (is_560p ? 752 : 640))
+ *
+ * These derived constants then calculate pitch and size from those base values.
  * All platforms use RGB565 (2 bytes per pixel, 16-bit depth).
  */
 #define FIXED_BPP 2 // Bytes per pixel (RGB565)
