@@ -17,6 +17,12 @@
 #define PLATFORM_H
 
 ///////////////////////////////
+// Platform Identification
+///////////////////////////////
+
+#define PLATFORM "rg35xx"
+
+///////////////////////////////
 // Dependencies
 ///////////////////////////////
 
@@ -133,10 +139,6 @@
 #define SCREEN_DIAGONAL 3.5f // Physical screen diagonal in inches
 #define FIXED_WIDTH 640 // Screen width in pixels
 #define FIXED_HEIGHT 480 // Screen height in pixels (VGA)
-#define FIXED_BPP 2 // Bytes per pixel (RGB565)
-#define FIXED_DEPTH (FIXED_BPP * 8) // Bit depth (16-bit color)
-#define FIXED_PITCH (FIXED_WIDTH * FIXED_BPP) // Row stride in bytes
-#define FIXED_SIZE (FIXED_PITCH * FIXED_HEIGHT) // Total framebuffer size
 
 ///////////////////////////////
 // Platform-Specific Paths and Settings

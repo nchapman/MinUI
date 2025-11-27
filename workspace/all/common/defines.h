@@ -312,20 +312,41 @@
 #endif
 
 ///////////////////////////////
-// HDMI output configuration
+// Derived display constants
+// Calculated from platform-defined values
 ///////////////////////////////
 
 /**
- * HDMI output resolution defaults.
- *
- * If platform doesn't define HAS_HDMI, HDMI output uses same
- * resolution as the built-in screen.
+ * Standard display buffer calculations.
+ * All platforms use RGB565 (2 bytes per pixel, 16-bit depth).
+ */
+#define FIXED_BPP 2 // Bytes per pixel (RGB565)
+#define FIXED_DEPTH (FIXED_BPP * 8) // Bit depth (16-bit color)
+#define FIXED_PITCH (FIXED_WIDTH * FIXED_BPP) // Row stride in bytes
+#define FIXED_SIZE (FIXED_PITCH * FIXED_HEIGHT) // Total framebuffer size
+
+/**
+ * HDMI output buffer calculations.
+ * If HAS_HDMI is defined, platform must provide HDMI_WIDTH/HDMI_HEIGHT.
+ * Otherwise, HDMI uses the same resolution as the built-in screen.
  */
 #ifndef HAS_HDMI
 #define HDMI_WIDTH FIXED_WIDTH
 #define HDMI_HEIGHT FIXED_HEIGHT
-#define HDMI_PITCH FIXED_PITCH
-#define HDMI_SIZE FIXED_SIZE
+#endif
+#define HDMI_PITCH (HDMI_WIDTH * FIXED_BPP) // HDMI row stride
+#define HDMI_SIZE (HDMI_PITCH * HDMI_HEIGHT) // HDMI framebuffer size
+
+///////////////////////////////
+// Audio configuration
+///////////////////////////////
+
+/**
+ * Default audio buffer size in samples.
+ * Platforms can override this if needed (e.g., for latency tuning).
+ */
+#ifndef SAMPLES
+#define SAMPLES 512
 #endif
 
 ///////////////////////////////

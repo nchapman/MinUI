@@ -18,6 +18,12 @@
 #define PLATFORM_H
 
 ///////////////////////////////
+// Platform Identification
+///////////////////////////////
+
+#define PLATFORM "rg35xxplus"
+
+///////////////////////////////
 // Dependencies
 ///////////////////////////////
 
@@ -146,10 +152,6 @@ extern int on_hdmi; // Set to 1 when HDMI output is active
 	           : (is_rg34xx ? 3.4f : 3.5f)) // Diagonal: 3.95" (Cube) / 3.4" (34XX) / 3.5" (Plus)
 #define FIXED_WIDTH (is_cubexx ? 720 : (is_rg34xx ? 720 : 640)) // Width: 720 (H/SP) or 640 (Plus)
 #define FIXED_HEIGHT (is_cubexx ? 720 : 480) // Height: 720 (H) or 480 (Plus/SP)
-#define FIXED_BPP 2 // Bytes per pixel (RGB565)
-#define FIXED_DEPTH (FIXED_BPP * 8) // Bit depth (16-bit color)
-#define FIXED_PITCH (FIXED_WIDTH * FIXED_BPP) // Row stride in bytes
-#define FIXED_SIZE (FIXED_PITCH * FIXED_HEIGHT) // Total framebuffer size
 
 ///////////////////////////////
 // HDMI Output Specifications
@@ -158,8 +160,6 @@ extern int on_hdmi; // Set to 1 when HDMI output is active
 #define HAS_HDMI 1 // HDMI output supported
 #define HDMI_WIDTH 1280 // HDMI width in pixels
 #define HDMI_HEIGHT 720 // HDMI height in pixels (720p)
-#define HDMI_PITCH (HDMI_WIDTH * FIXED_BPP) // HDMI row stride
-#define HDMI_SIZE (HDMI_PITCH * HDMI_HEIGHT) // HDMI framebuffer size
 
 ///////////////////////////////
 // Platform-Specific Paths and Settings

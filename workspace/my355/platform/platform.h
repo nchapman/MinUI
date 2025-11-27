@@ -16,6 +16,12 @@
 #define PLATFORM_H
 
 ///////////////////////////////
+// Platform Identification
+///////////////////////////////
+
+#define PLATFORM "my355"
+
+///////////////////////////////
 // Dependencies
 ///////////////////////////////
 
@@ -149,10 +155,6 @@ extern int on_hdmi; // Set to 1 when HDMI output is active
 #define SCREEN_DIAGONAL 3.5f // Physical screen diagonal in inches (Miyoo Flip)
 #define FIXED_WIDTH 640 // Screen width in pixels
 #define FIXED_HEIGHT 480 // Screen height in pixels (VGA)
-#define FIXED_BPP 2 // Bytes per pixel (RGB565)
-#define FIXED_DEPTH (FIXED_BPP * 8) // Bit depth (16-bit color)
-#define FIXED_PITCH (FIXED_WIDTH * FIXED_BPP) // Row stride in bytes
-#define FIXED_SIZE (FIXED_PITCH * FIXED_HEIGHT) // Total framebuffer size
 
 ///////////////////////////////
 // HDMI Output Specifications
@@ -161,8 +163,6 @@ extern int on_hdmi; // Set to 1 when HDMI output is active
 #define HAS_HDMI 1 // HDMI output supported
 #define HDMI_WIDTH 1280 // HDMI width in pixels
 #define HDMI_HEIGHT 720 // HDMI height in pixels (720p)
-#define HDMI_PITCH (HDMI_WIDTH * FIXED_BPP) // HDMI row stride
-#define HDMI_SIZE (HDMI_PITCH * HDMI_HEIGHT) // HDMI framebuffer size
 
 ///////////////////////////////
 // Platform-Specific Paths and Settings

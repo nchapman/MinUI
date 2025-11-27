@@ -44,8 +44,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "defines.h" // for HAS_NEON, FIXED_BPP, MIN
 #include "log.h"
-#include "platform.h" // for HAS_NEON
 #include "scaler.h" // for function declarations and ROTATION_ constants
 
 /**
@@ -3982,7 +3982,7 @@ void scaler_c32(uint32_t xmul, uint32_t ymul, void* __restrict src, void* __rest
 	 ((((cG(B) << 1) + (cG(A) * 3)) / 5) & 0x3f) << 5 |                                            \
 	 ((((cB(B) << 1) + (cB(A) * 3)) / 5) & 0x1f))
 
-#define MIN(a, b) ((int)(a) < (int)(b) ? (a) : (b))
+// MIN is provided by defines.h
 
 /**
  * Deinterlaced line-doubling scaler with blending.
