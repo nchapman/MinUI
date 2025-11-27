@@ -4553,8 +4553,8 @@ static int Menu_message(char* message, char** pairs) {
 		if (dirty) {
 			GFX_clear(screen);
 			GFX_blitMessage(font.medium, message, screen,
-			                &(SDL_Rect){0, DP(ui.padding), screen->w,
-			                            screen->h - DP(ui.pill_height + ui.padding)});
+			                &(SDL_Rect){0, DP(ui.padding), DP(ui.screen_width),
+			                            DP(ui.screen_height - ui.pill_height - ui.padding)});
 			GFX_blitButtonGroup(pairs, 0, screen, 1);
 			GFX_flip(screen);
 			dirty = 0;
@@ -5104,8 +5104,8 @@ static int Menu_options(MenuList* list) {
 
 	// dependent on option list offset top and bottom, eg. the gray triangles
 	int max_visible_options =
-	    (screen->h - DP((ui.padding + ui.pill_height) * 2)) /
-	    DP(ui.button_size); // 7 for 480, 10 for 720
+	    (ui.screen_height - (ui.padding + ui.pill_height) * 2) /
+	    ui.button_size; // 7 for 480, 10 for 720
 
 	int count;
 	for (count = 0; items[count].name; count++)
@@ -5284,10 +5284,10 @@ static int Menu_options(MenuList* list) {
 							mw = w;
 					}
 					// cache the result
-					list->max_width = mw = MIN(mw, screen->w - DP(ui.padding * 2));
+					list->max_width = mw = MIN(mw, DP(ui.screen_width - ui.padding * 2));
 				}
 
-				int ox = (screen->w - mw) / 2;
+				int ox = (DP(ui.screen_width) - mw) / 2;
 				int oy = DP(ui.padding + ui.pill_height);
 				int selected_row = selected - start;
 				for (int i = start, j = 0; i < end; i++, j++) {
@@ -5317,7 +5317,7 @@ static int Menu_options(MenuList* list) {
 				}
 			} else if (type == MENU_FIXED) {
 				// NOTE: no need to calculate max width
-				int mw = screen->w - DP(ui.padding * 2);
+				int mw = DP(ui.screen_width - ui.padding * 2);
 				// int lw,rw;
 				// lw = rw = mw / 2;
 				int ox, oy;
@@ -5395,10 +5395,10 @@ static int Menu_options(MenuList* list) {
 							mw = w;
 					}
 					// cache the result
-					list->max_width = mw = MIN(mw, screen->w - DP(ui.padding * 2));
+					list->max_width = mw = MIN(mw, DP(ui.screen_width - ui.padding * 2));
 				}
 
-				int ox = (screen->w - mw) / 2;
+				int ox = (DP(ui.screen_width) - mw) / 2;
 				int oy = DP(ui.padding + ui.pill_height);
 				int selected_row = selected - start;
 				for (int i = start, j = 0; i < end; i++, j++) {
@@ -5445,7 +5445,7 @@ static int Menu_options(MenuList* list) {
 			if (count > max_visible_options) {
 #define SCROLL_WIDTH 24
 #define SCROLL_HEIGHT 4
-				int ox = (screen->w - DP(SCROLL_WIDTH)) / 2;
+				int ox = (DP(ui.screen_width) - DP(SCROLL_WIDTH)) / 2;
 				int oy = DP((ui.pill_height - SCROLL_HEIGHT) / 2);
 				if (start > 0)
 					GFX_blitAsset(ASSET_SCROLL_UP, NULL, screen,
@@ -5453,8 +5453,7 @@ static int Menu_options(MenuList* list) {
 				if (end < count)
 					GFX_blitAsset(
 					    ASSET_SCROLL_DOWN, NULL, screen,
-					    &(SDL_Rect){ox, screen->h -
-					                        DP(ui.padding + ui.pill_height + ui.button_size) + oy});
+					    &(SDL_Rect){ox, DP(ui.screen_height - ui.padding - ui.pill_height - ui.button_size) + oy});
 			}
 
 			if (!desc && list->desc)
@@ -5465,7 +5464,7 @@ static int Menu_options(MenuList* list) {
 				GFX_sizeText(font.tiny, desc, DP(12), &w, &h);
 				GFX_blitText(
 				    font.tiny, desc, DP(12), COLOR_WHITE, screen,
-				    &(SDL_Rect){(screen->w - w) / 2, screen->h - DP(ui.padding) - h, w, h});
+				    &(SDL_Rect){(DP(ui.screen_width) - w) / 2, DP(ui.screen_height) - DP(ui.padding) - h, w, h});
 			}
 
 			GFX_flip(screen);
@@ -5935,7 +5934,7 @@ static void Menu_loop(void) {
 
 			int ox, oy;
 			int ow = GFX_blitHardwareGroup(screen, show_setting);
-			int max_width = screen->w - DP(ui.padding * 2) - ow;
+			int max_width = DP(ui.screen_width) - DP(ui.padding * 2) - ow;
 
 			char display_name[256];
 			int text_width = GFX_truncateText(font.large, rom_name, display_name, max_width,
@@ -5960,9 +5959,9 @@ static void Menu_loop(void) {
 				    0);
 			GFX_blitButtonGroup((char*[]){"B", "BACK", "A", "OKAY", NULL}, 1, screen, 1);
 
-			// Vertically center the menu items
+			// Vertically center the menu items (oy is in DP units)
 			int menu_height_dp = ui.padding + (MENU_ITEM_COUNT * ui.pill_height);
-			oy = (screen->h - DP(menu_height_dp)) / 2 / DP(1);
+			oy = (ui.screen_height - menu_height_dp) / 2;
 			
 			for (int i = 0; i < MENU_ITEM_COUNT; i++) {
 				char* item = menu.items[i];
@@ -5973,12 +5972,12 @@ static void Menu_loop(void) {
 					if (menu.total_discs > 1 && i == ITEM_CONT) {
 						GFX_blitPill(ASSET_DARK_GRAY_PILL, screen,
 						             &(SDL_Rect){DP(ui.padding), DP(oy + ui.padding),
-						                         screen->w - DP(ui.padding * 2),
+						                         DP(ui.screen_width - ui.padding * 2),
 						                         DP(ui.pill_height)});
 						text = TTF_RenderUTF8_Blended(font.large, disc_name, COLOR_WHITE);
 						SDL_BlitSurface(
 						    text, NULL, screen,
-						    &(SDL_Rect){screen->w - DP(ui.padding + ui.button_padding) - text->w,
+						    &(SDL_Rect){DP(ui.screen_width - ui.padding - ui.button_padding) - text->w,
 						                DP(oy + ui.padding + ui.text_baseline)});
 						SDL_FreeSurface(text);
 					}

@@ -298,12 +298,17 @@ int main(int argc, char* argv[]) {
 			GFX_blitButtonGroup((char*[]){"B", "CANCEL", "A", "SET", NULL}, 1, screen, 1);
 
 			// Center the date/time display
-			// Width is 188 pixels (@1x) in 24-hour mode, 223 pixels in 12-hour mode
-			int ox = (screen->w - (show_24hour ? DP(188) : DP(223))) / 2;
+			// Width: 188dp (24-hour) or 223dp (12-hour)
+			int content_width_dp = show_24hour ? 188 : 223;
+			int ox_dp = (ui.screen_width - content_width_dp) / 2;
 
 			// Render date/time in format: YYYY/MM/DD HH:MM:SS [AM/PM]
-			int x = ox;
-			int y = DP((((FIXED_HEIGHT / FIXED_SCALE) - ui.pill_height - DIGIT_HEIGHT) / 2));
+			// Vertically center in available space (above footer pill)
+			int available_height_dp = ui.screen_height - ui.padding - ui.pill_height;
+			int oy_dp = (available_height_dp - DIGIT_HEIGHT) / 2;
+
+			int x = DP(ox_dp);
+			int y = DP(oy_dp);
 
 			x = blitNumber(year_selected, x, y);
 			x = blit(CHAR_SLASH, x, y);
@@ -336,7 +341,8 @@ int main(int argc, char* argv[]) {
 			}
 
 			// Draw selection cursor underline
-			x = ox;
+			// Reset to start position (ox_dp converted to pixels)
+			x = DP(ox_dp);
 			y += DP(19);
 			if (select_cursor != CURSOR_YEAR) {
 				x += DP(50); // Width of "YYYY/"

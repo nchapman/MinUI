@@ -2,7 +2,7 @@
 
 **Problem:** Assets showing black backgrounds instead of transparency on rg35xxplus.
 
-**Status:** Works on tg5040, fails on rg35xxplus
+**Status:** ✅ **SOLVED** - Works on all platforms (tg5040, rg35xxplus, desktop)
 
 **Note:** This issue is INDEPENDENT of the +1 tier scaling change. The +1 tier change just selects a larger source asset - it doesn't affect transparency handling. We discovered this transparency bug while testing the +1 tier improvement.
 
@@ -101,7 +101,7 @@ SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, 0, 0, 0, 0));
 
 ---
 
-### Attempt 4: Remove FillRect, rely on SDL blit behavior (CURRENT)
+### Attempt 4: Remove FillRect, rely on SDL blit behavior
 **File:** `workspace/all/common/api.c` lines 445-505
 **Code:**
 ```c
@@ -113,12 +113,50 @@ SDL_FreeSurface(temp);
 // NO FillRect - let SDL handle transparency through blitting
 SDL_BlitSurface(source, &src_rect, surface, &dst_rect);
 ```
-**Result:** ✅ Compiles, 🔄 **Testing on rg35xxplus...**
+**Result:** ❌ Still shows black backgrounds
 
-**Theory:**
-- Don't pre-fill surfaces with any color
-- Let SDL's blitting preserve whatever transparency exists in source
-- Avoids the RGBA→RGB565 conversion issue
+**Why it failed:**
+- Still converting intermediate surfaces to `loaded_assets->format`
+- SDL's default alpha-blending causes `src * alpha + dst * (1-alpha)`
+- When dst is uninitialized/black, transparent areas blend to black
+
+---
+
+### Attempt 5: Keep gfx.assets in RGBA8888 format ✅ SUCCESS
+**File:** `workspace/all/common/api.c` lines 445-520
+**Code:**
+```c
+// Keep everything in RGBA8888 - don't convert to loaded_assets->format
+SDL_Surface* gfx.assets = SDL_CreateRGBSurface(0, sheet_w, sheet_h, 32, RGBA_MASK_8888);
+
+// For each asset extraction and scaling:
+SDL_Surface* extracted = SDL_CreateRGBSurface(0, src_w, src_h, 32, RGBA_MASK_8888);
+SDLX_SetAlpha(loaded_assets, 0, 0);  // Disable alpha-blend, copy RGBA directly
+SDL_BlitSurface(loaded_assets, &src_rect, extracted, NULL);
+SDLX_SetAlpha(loaded_assets, SDL_SRCALPHA, 0);  // Re-enable for later
+
+SDL_Surface* scaled = SDL_CreateRGBSurface(0, target_w, target_h, 32, RGBA_MASK_8888);
+GFX_scaleBilinear(extracted, scaled);  // Direct pixel copy, preserves alpha
+
+SDLX_SetAlpha(scaled, 0, 0);  // Disable alpha-blend for copy to sheet
+SDL_BlitSurface(scaled, NULL, gfx.assets, &dst_rect);
+```
+**Result:** ✅ **Works on all platforms!** (tg5040, rg35xxplus, desktop)
+
+**Theory (based on research):**
+1. `IMG_Load` returns PNG in native RGBA format with `SDL_SRCALPHA` enabled
+2. With `SDL_SRCALPHA` enabled, blitting does alpha-blending: `result = src*alpha + dst*(1-alpha)`
+3. When dst is black/uninitialized, transparent pixels (alpha=0) blend to black
+4. **Fix:** Call `SDL_SetAlpha(surface, 0, 0)` before blitting to COPY RGBA data directly
+5. Keep `gfx.assets` in RGBA8888 - SDL handles RGBA→RGB565 at final screen blit time
+
+**Key insight from SDL 1.2 docs:**
+> "When SDL_SRCALPHA is set, alpha-blending is performed. If SDL_SRCALPHA is not set,
+> the RGBA data is copied to the destination surface."
+
+**References:**
+- [SDL 1.2 PNG Alpha Blit Issue](https://github.com/libsdl-org/SDL-1.2/issues/51)
+- [SDL_DisplayFormatAlpha docs](https://www.libsdl.org/release/SDL-1.2.15/docs/html/sdldisplayformatalpha.html)
 
 ---
 

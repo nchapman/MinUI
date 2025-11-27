@@ -62,19 +62,47 @@ extern float gfx_dp_scale;
 #define DP4(a, b, c, d) DP(a), DP(b), DP(c), DP(d)
 
 /**
+ * Convert physical pixels to display points.
+ *
+ * Use this when you have pixel measurements (e.g., from SDL_TTF) and need
+ * to work in DP space for layout calculations.
+ *
+ * @param px Value in physical pixels
+ * @return Value in display points (rounded)
+ */
+#define PX_TO_DP(px) ((int)((px) / gfx_dp_scale + 0.5f))
+
+/**
+ * Create SDL_Rect from DP coordinates.
+ *
+ * Use this for inline SDL_Rect creation when DP wrapper functions aren't available.
+ *
+ * @param x_dp X coordinate in DP
+ * @param y_dp Y coordinate in DP
+ * @param w_dp Width in DP (0 for auto)
+ * @param h_dp Height in DP (0 for auto)
+ * @return SDL_Rect with pixel-converted coordinates
+ */
+#define DP_RECT(x_dp, y_dp, w_dp, h_dp) ((SDL_Rect){DP(x_dp), DP(y_dp), DP(w_dp), DP(h_dp)})
+
+/**
  * Runtime-calculated UI layout parameters.
  *
  * These values are computed by UI_initLayout() based on screen dimensions
  * to optimally fill the display without per-platform manual configuration.
  */
 typedef struct UI_Layout {
-	int pill_height; // Height of menu pills in dp (28-32 typical)
-	int row_count; // Number of visible menu rows (6-8)
-	int padding; // Screen edge padding in dp
-	int text_baseline; // Vertical offset for text centering in pill
-	int button_size; // Size of button graphics in dp
-	int button_margin; // Margin around buttons in dp
-	int button_padding; // Padding inside buttons in dp
+	int screen_width;     // Screen width in dp
+	int screen_height;    // Screen height in dp
+	int screen_width_px;  // Screen width in pixels (cached for convenience)
+	int screen_height_px; // Screen height in pixels (cached for convenience)
+	int pill_height;      // Height of menu pills in dp (28-32 typical)
+	int row_count;        // Number of visible menu rows (6-8)
+	int padding;          // Screen edge padding in dp
+	int text_baseline;    // Vertical offset for text centering in pill
+	int button_size;      // Size of button graphics in dp
+	int button_margin;    // Margin around buttons in dp
+	int button_padding;   // Padding inside buttons in dp
 } UI_Layout;
 
 extern UI_Layout ui;
@@ -588,6 +616,125 @@ void GFX_sizeText(TTF_Font* font, char* str, int leading, int* w, int* h);
  */
 void GFX_blitText(TTF_Font* font, char* str, int leading, SDL_Color color, SDL_Surface* dst,
                   SDL_Rect* dst_rect);
+
+///////////////////////////////
+// DP-Native Wrapper Functions
+///////////////////////////////
+
+/**
+ * DP-native wrappers for GFX functions.
+ *
+ * These wrappers accept DP coordinates and convert to pixels internally,
+ * following the pattern used by Android, iOS, and other cross-platform frameworks.
+ * Use these for all UI layout code.
+ */
+
+/**
+ * Blits a pill-shaped background using DP coordinates.
+ *
+ * @param asset ASSET_WHITE_PILL, ASSET_BLACK_PILL, or ASSET_DARK_GRAY_PILL
+ * @param dst Destination surface
+ * @param x_dp X coordinate in DP
+ * @param y_dp Y coordinate in DP
+ * @param w_dp Width in DP
+ * @param h_dp Height in DP
+ */
+static inline void GFX_blitPill_DP(int asset, SDL_Surface* dst, int x_dp, int y_dp, int w_dp, int h_dp) {
+	SDL_Rect rect = {DP(x_dp), DP(y_dp), DP(w_dp), DP(h_dp)};
+	GFX_blitPill(asset, dst, &rect);
+}
+
+/**
+ * Blits a rectangular asset using DP coordinates.
+ *
+ * @param asset Asset ID
+ * @param dst Destination surface
+ * @param x_dp X coordinate in DP
+ * @param y_dp Y coordinate in DP
+ * @param w_dp Width in DP
+ * @param h_dp Height in DP
+ */
+static inline void GFX_blitRect_DP(int asset, SDL_Surface* dst, int x_dp, int y_dp, int w_dp, int h_dp) {
+	SDL_Rect rect = {DP(x_dp), DP(y_dp), DP(w_dp), DP(h_dp)};
+	GFX_blitRect(asset, dst, &rect);
+}
+
+/**
+ * Blits an asset using DP coordinates.
+ *
+ * @param asset Asset ID
+ * @param src_rect Source rectangle (in pixels, or NULL for full asset)
+ * @param dst Destination surface
+ * @param x_dp X coordinate in DP
+ * @param y_dp Y coordinate in DP
+ */
+static inline void GFX_blitAsset_DP(int asset, const SDL_Rect* src_rect, SDL_Surface* dst, int x_dp, int y_dp) {
+	SDL_Rect dst_rect = {DP(x_dp), DP(y_dp), 0, 0};
+	GFX_blitAsset(asset, src_rect, dst, &dst_rect);
+}
+
+/**
+ * Blits the battery indicator using DP coordinates.
+ *
+ * @param dst Destination surface
+ * @param x_dp X coordinate in DP
+ * @param y_dp Y coordinate in DP
+ */
+static inline void GFX_blitBattery_DP(SDL_Surface* dst, int x_dp, int y_dp) {
+	SDL_Rect rect = {DP(x_dp), DP(y_dp), 0, 0};
+	GFX_blitBattery(dst, &rect);
+}
+
+/**
+ * Blits centered message text using DP rectangle.
+ *
+ * @param ttf_font Font to use
+ * @param msg Message text
+ * @param dst Destination surface
+ * @param x_dp X coordinate in DP
+ * @param y_dp Y coordinate in DP
+ * @param w_dp Width in DP
+ * @param h_dp Height in DP
+ */
+static inline void GFX_blitMessage_DP(TTF_Font* ttf_font, char* msg, SDL_Surface* dst,
+                                       int x_dp, int y_dp, int w_dp, int h_dp) {
+	SDL_Rect rect = {DP(x_dp), DP(y_dp), DP(w_dp), DP(h_dp)};
+	GFX_blitMessage(ttf_font, msg, dst, &rect);
+}
+
+///////////////////////////////
+// SDL Helper Functions
+///////////////////////////////
+
+/**
+ * Gets text size in DP units.
+ *
+ * @param ttf_font Font to use
+ * @param text Text to measure
+ * @param w_dp Output: width in DP (may be NULL)
+ * @param h_dp Output: height in DP (may be NULL)
+ */
+static inline void TTF_SizeUTF8_DP(TTF_Font* ttf_font, const char* text, int* w_dp, int* h_dp) {
+	int w_px = 0, h_px = 0;
+	TTF_SizeUTF8(ttf_font, text, &w_px, &h_px);
+	if (w_dp) *w_dp = PX_TO_DP(w_px);
+	if (h_dp) *h_dp = PX_TO_DP(h_px);
+}
+
+/**
+ * Blits surface at DP coordinates.
+ *
+ * @param src Source surface
+ * @param srcrect Source rectangle (NULL for full surface)
+ * @param dst Destination surface
+ * @param x_dp X coordinate in DP
+ * @param y_dp Y coordinate in DP
+ */
+static inline void SDL_BlitSurface_DP(SDL_Surface* src, SDL_Rect* srcrect,
+                                      SDL_Surface* dst, int x_dp, int y_dp) {
+	SDL_Rect dstrect = {DP(x_dp), DP(y_dp), 0, 0};
+	SDL_BlitSurface(src, srcrect, dst, &dstrect);
+}
 
 ///////////////////////////////
 // Sound (SND) API

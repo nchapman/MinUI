@@ -175,6 +175,10 @@ void UI_initLayout(int screen_width, int screen_height, float diagonal_inches) {
 		LOG_info("Row calc: EMERGENCY FALLBACK to %ddp, 1 row\n", MIN_PILL);
 	}
 
+	ui.screen_width = (int)(screen_width / gfx_dp_scale + 0.5f);
+	ui.screen_height = screen_height_dp;
+	ui.screen_width_px = screen_width;
+	ui.screen_height_px = screen_height;
 	ui.pill_height = best_pill;
 	ui.row_count = best_rows;
 	ui.padding = DEFAULT_PADDING;
@@ -1270,7 +1274,7 @@ int GFX_blitHardwareGroup(SDL_Surface* dst, int show_setting) {
 
 	if (show_setting && !GetHDMI()) {
 		ow = DP(ui.pill_height + SETTINGS_WIDTH + 10 + 4);
-		ox = dst->w - DP(ui.padding) - ow;
+		ox = ui.screen_width_px - DP(ui.padding) - ow;
 		oy = DP(ui.padding);
 		GFX_blitPill(gfx.mode == MODE_MAIN ? ASSET_DARK_GRAY_PILL : ASSET_BLACK_PILL, dst,
 		             &(SDL_Rect){ox, oy, ow, DP(ui.pill_height)});
@@ -1313,7 +1317,7 @@ int GFX_blitHardwareGroup(SDL_Surface* dst, int show_setting) {
 		if (show_wifi)
 			ow += ww;
 
-		ox = dst->w - DP(ui.padding) - ow;
+		ox = ui.screen_width_px - DP(ui.padding) - ow;
 		oy = DP(ui.padding);
 		GFX_blitPill(gfx.mode == MODE_MAIN ? ASSET_DARK_GRAY_PILL : ASSET_BLACK_PILL, dst,
 		             &(SDL_Rect){ox, oy, ow, DP(ui.pill_height)});
@@ -2618,7 +2622,7 @@ void PWR_powerOff(void) {
 		// TODO: for some reason screen's dimensions end up being 0x0 in GFX_blitMessage...
 		PLAT_clearVideo(gfx.screen);
 		GFX_blitMessage(font.large, msg, gfx.screen,
-		                &(SDL_Rect){0, 0, gfx.screen->w, gfx.screen->h}); //, NULL);
+		                &(SDL_Rect){0, 0, ui.screen_width, ui.screen_height}); //, NULL);
 		GFX_flip(gfx.screen);
 		PLAT_powerOff();
 	}
