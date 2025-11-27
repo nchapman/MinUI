@@ -350,8 +350,8 @@ static int hasMode(const char* path, const char* mode) {
  *
  * Detects hardware variant (Mini vs Plus, 480p vs 560p) and allocates
  * ION memory for double-buffered rendering. The Plus variant is identified
- * by the presence of axp_test (AXP223 PMIC utility). The 560p mode requires
- * both hardware support and user opt-in via enable-560p file.
+ * by the presence of axp_test (AXP223 PMIC utility). The 560p mode is
+ * auto-enabled when hardware supports it.
  *
  * Memory Layout:
  * - Allocates 2 pages (PAGE_COUNT=2) of PAGE_SIZE each
@@ -365,7 +365,7 @@ static int hasMode(const char* path, const char* mode) {
 SDL_Surface* PLAT_initVideo(void) {
 	// Detect hardware variants
 	is_plus = exists("/customer/app/axp_test");
-	is_560p = hasMode(MODES_PATH, "752x560p") && exists(USERDATA_PATH "/enable-560p");
+	is_560p = hasMode(MODES_PATH, "752x560p");
 	LOG_info("is 560p: %i\n", is_560p);
 
 	// Initialize SDL with custom battery handling
