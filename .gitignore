@@ -21,7 +21,8 @@ build/.system/cores/
 
 # Generated paks (from workspace/all/paks/)
 # Paks are now generated during build from templates - see docs/PAK-TEMPLATES.md
-build/SYSTEM/*/paks/*.pak
+build/SYSTEM/*/paks/Emus/*.pak
+build/Tools/*/*.pak
 
 **/other/evtest
 **/other/jstest

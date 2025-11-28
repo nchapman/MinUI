@@ -163,7 +163,7 @@ system:
 		[ -f "$$pak_dir/pak.json" ] || continue; \
 		if jq -e '.platforms | index("$(PLATFORM)") or index("all")' "$$pak_dir/pak.json" > /dev/null 2>&1; then \
 			echo "  Constructing $${pak_name}.pak for $(PLATFORM)"; \
-			output_dir="./build/SYSTEM/$(PLATFORM)/paks/$${pak_name}.pak"; \
+			output_dir="./build/Tools/$(PLATFORM)/$${pak_name}.pak"; \
 			mkdir -p "$$output_dir"; \
 			[ -f "$$pak_dir/launch.sh" ] && cp "$$pak_dir/launch.sh" "$$output_dir/" && chmod +x "$$output_dir/launch.sh"; \
 			[ -f "$$pak_dir/pak.json" ] && cp "$$pak_dir/pak.json" "$$output_dir/"; \
@@ -182,14 +182,14 @@ system:
 	done; true
 	# Copy platform-specific binaries to paks (after pak construction)
 	@if [ "$(PLATFORM)" = "rg35xxplus" ]; then \
-		mkdir -p ./build/SYSTEM/rg35xxplus/paks/Apply\ Panel\ Fix.pak/bin; \
-		mkdir -p ./build/SYSTEM/rg35xxplus/paks/Swap\ Menu.pak/bin; \
-		cp ./workspace/rg35xxplus/other/dtc/dtc ./build/SYSTEM/rg35xxplus/paks/Apply\ Panel\ Fix.pak/bin/; \
-		cp ./workspace/rg35xxplus/other/dtc/dtc ./build/SYSTEM/rg35xxplus/paks/Swap\ Menu.pak/bin/; \
+		mkdir -p ./build/Tools/rg35xxplus/Apply\ Panel\ Fix.pak/bin; \
+		mkdir -p ./build/Tools/rg35xxplus/Swap\ Menu.pak/bin; \
+		cp ./workspace/rg35xxplus/other/dtc/dtc ./build/Tools/rg35xxplus/Apply\ Panel\ Fix.pak/bin/; \
+		cp ./workspace/rg35xxplus/other/dtc/dtc ./build/Tools/rg35xxplus/Swap\ Menu.pak/bin/; \
 	fi
 	@if [ "$(PLATFORM)" = "my282" ]; then \
-		mkdir -p ./build/SYSTEM/my282/paks/Remove\ Loading.pak; \
-		cp -r ./workspace/my282/other/squashfs/output/* ./build/SYSTEM/my282/paks/Remove\ Loading.pak/; \
+		mkdir -p ./build/Tools/my282/Remove\ Loading.pak; \
+		cp -r ./workspace/my282/other/squashfs/output/* ./build/Tools/my282/Remove\ Loading.pak/; \
 	fi
 
 # Deploy shared libretro cores from minarch-cores GitHub releases
@@ -355,8 +355,11 @@ package: tidy
 	cd ./build/PAYLOAD && zip -r LessUI.zip .system .tmp_update
 	mv ./build/PAYLOAD/LessUI.zip ./build/BASE
 
-	# TODO: can I just add everything in BASE to zip?
-	cd ./build/BASE && zip -r ../../releases/$(RELEASE_NAME).zip Bios Roms Saves miyoo miyoo354 trimui rg35xx rg35xxplus miyoo355 magicx miyoo285 em_ui.sh LessUI.zip README.txt
+	# Move Tools to BASE so everything is at the same level
+	mv ./build/Tools ./build/BASE/
+
+	# Package final release
+	cd ./build/BASE && zip -r ../../releases/$(RELEASE_NAME).zip Tools Bios Roms Saves miyoo miyoo354 trimui rg35xx rg35xxplus miyoo355 magicx miyoo285 em_ui.sh LessUI.zip README.txt
 	echo "$(RELEASE_NAME)" > ./build/latest.txt
 	
 ###########################################################
