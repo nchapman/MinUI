@@ -67,12 +67,12 @@ export LOG_FLAGS
 MINARCH_CORES_VERSION ?= 20251119
 CORES_BASE = https://github.com/nchapman/minarch-cores/releases/download/$(MINARCH_CORES_VERSION)
 
-.PHONY: build test lint format dev dev-run dev-run-4x3 dev-run-16x9 dev-clean all shell name clean setup done dev-deploy dev-build-deploy
+.PHONY: build test lint format dev dev-run dev-run-4x3 dev-run-16x9 dev-clean all shell name clean setup dev-deploy dev-build-deploy
 
 export MAKEFLAGS=--no-print-directory
 
 # Build everything: all platforms, create release ZIPs
-all: setup $(PLATFORMS) special package done
+all: setup $(PLATFORMS) special package
 
 # Enter Docker build environment for a specific platform
 shell:
@@ -153,8 +153,7 @@ system:
 	# Install utils (calls install hook for each util)
 	@$(MAKE) -C ./workspace/all/utils install PLATFORM=$(PLATFORM) DESTDIR=$(CURDIR)/build/SYSTEM/$(PLATFORM)/bin
 	# Construct tool paks from workspace/all/paks/
-	# For each pak: create directory, copy launch.sh, pak.json, resources, and binary
-	for pak_dir in ./workspace/all/paks/*/; do \
+	@for pak_dir in ./workspace/all/paks/*/; do \
 		[ -d "$$pak_dir" ] || continue; \
 		pak_name=$$(basename "$$pak_dir"); \
 		[ -f "$$pak_dir/pak.json" ] || continue; \
@@ -283,10 +282,6 @@ setup: name
 	@echo "Generating paks from templates..."
 	@./scripts/generate-paks.sh all
 
-# Signal build completion (macOS only - harmless on Linux)
-done:
-	say "done" 2>/dev/null || true
-
 # Platform-specific packaging for Miyoo/Trimui family
 special:
 	# Copy shared install/update functions to BOOT/common
@@ -340,14 +335,22 @@ package: tidy
 	cp -R ./build/BOOT/.tmp_update ./build/PAYLOAD/
 
 	# Create LessUI.zip for update installer
-	cd ./build/PAYLOAD && zip -r LessUI.zip .system .tmp_update
+	@if command -v 7z >/dev/null 2>&1; then \
+		cd ./build/PAYLOAD && 7z a -tzip -mmt=on -mx=5 LessUI.zip .system .tmp_update; \
+	else \
+		cd ./build/PAYLOAD && zip -r LessUI.zip .system .tmp_update; \
+	fi
 	mv ./build/PAYLOAD/LessUI.zip ./build/BASE
 
 	# Move Tools to BASE so everything is at the same level
 	mv ./build/Tools ./build/BASE/
 
-	# Package final release
-	cd ./build/BASE && zip -r ../../releases/$(RELEASE_NAME).zip Tools Bios Roms Saves miyoo miyoo354 trimui rg35xx rg35xxplus miyoo355 magicx miyoo285 em_ui.sh LessUI.zip README.txt
+	# Package final release (use 7z for multi-threaded compression if available)
+	@if command -v 7z >/dev/null 2>&1; then \
+		cd ./build/BASE && 7z a -tzip -mmt=on -mx=5 ../../releases/$(RELEASE_NAME).zip Tools Bios Roms Saves miyoo miyoo354 trimui rg35xx rg35xxplus miyoo355 magicx miyoo285 em_ui.sh LessUI.zip README.txt; \
+	else \
+		cd ./build/BASE && zip -r ../../releases/$(RELEASE_NAME).zip Tools Bios Roms Saves miyoo miyoo354 trimui rg35xx rg35xxplus miyoo355 magicx miyoo285 em_ui.sh LessUI.zip README.txt; \
+	fi
 	echo "$(RELEASE_NAME)" > ./build/latest.txt
 	
 ###########################################################
