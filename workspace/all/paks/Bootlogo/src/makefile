@@ -8,9 +8,9 @@
 # standalone utilities without the common MinUI source files.
 
 ###########################################################
-# Hook interface gate - setup and clean don't need PLATFORM
+# Hook interface gate - setup, install, and clean don't need PLATFORM
 
-ifeq ($(filter setup clean,$(MAKECMDGOALS)),)
+ifeq ($(filter setup install clean,$(MAKECMDGOALS)),)
 
 ifeq (,$(PLATFORM))
 PLATFORM := $(UNION_PLATFORM)
