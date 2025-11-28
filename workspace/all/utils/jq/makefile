@@ -1,42 +1,48 @@
 ###########################################################
 # jq - Lightweight command-line JSON processor
 # Downloads prebuilt binaries from GitHub releases
+#
+# Hook interface:
+#   setup   - Download both architectures, install to common/bin
+#   build   - (not implemented - no compilation needed)
+#   install - (not implemented - happens during setup)
+#   clean   - Remove downloads
 ###########################################################
 
 JQ_VERSION := 1.7.1
 
-ifeq (,$(PLATFORM))
-PLATFORM=$(UNION_PLATFORM)
-endif
+# Download targets
+bin/arm/jq:
+	mkdir -p bin/arm
+	wget -q -O $@ https://github.com/jqlang/jq/releases/download/jq-$(JQ_VERSION)/jq-linux-armhf
+	chmod +x $@
 
-ifeq (,$(PLATFORM))
-	$(error please specify PLATFORM, eg. PLATFORM=miyoomini make)
-endif
+bin/arm64/jq:
+	mkdir -p bin/arm64
+	wget -q -O $@ https://github.com/jqlang/jq/releases/download/jq-$(JQ_VERSION)/jq-linux-arm64
+	chmod +x $@
 
-# Determine architecture from platform
-# arm64 platforms: tg5040, rg35xxplus
-# arm (32-bit) platforms: miyoomini, trimuismart, rg35xx, my282, my355, rgb30, m17, zero28, magicmini
-ifeq ($(PLATFORM),tg5040)
-ARCH := arm64
-JQ_BINARY := jq-linux-arm64
-else ifeq ($(PLATFORM),rg35xxplus)
-ARCH := arm64
-JQ_BINARY := jq-linux-arm64
-else
-ARCH := arm
-JQ_BINARY := jq-linux-armhf
-endif
+# Legacy target for direct invocation
+all: setup
 
-PRODUCT = build/$(PLATFORM)/jq
+# Setup hook - download and install to common/bin (runs once)
+setup: bin/arm/jq bin/arm64/jq
+	@if [ -n "$(DESTDIR)" ]; then \
+		mkdir -p $(DESTDIR)/arm $(DESTDIR)/arm64; \
+		cp bin/arm/jq $(DESTDIR)/arm/; \
+		cp bin/arm64/jq $(DESTDIR)/arm64/; \
+	fi
 
-$(PRODUCT):
-	mkdir -p build/$(PLATFORM)
-	wget -q -O $(PRODUCT) https://github.com/jqlang/jq/releases/download/jq-$(JQ_VERSION)/$(JQ_BINARY)
-	chmod +x $(PRODUCT)
+# Build hook - not needed (no compilation)
+build:
+	@true
 
-all: $(PRODUCT)
+# Install hook - not needed (installed during setup)
+install:
+	@true
 
+# Clean hook
 clean:
-	rm -rf build
+	rm -rf bin
 
-.PHONY: all clean
+.PHONY: all setup build install clean

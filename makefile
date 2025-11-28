@@ -67,12 +67,12 @@ export LOG_FLAGS
 MINARCH_CORES_VERSION ?= 20251119
 CORES_BASE = https://github.com/nchapman/minarch-cores/releases/download/$(MINARCH_CORES_VERSION)
 
-.PHONY: build test lint format dev dev-run dev-run-4x3 dev-run-16x9 dev-clean all shell name clean setup done cores-download dev-deploy dev-build-deploy
+.PHONY: build test lint format dev dev-run dev-run-4x3 dev-run-16x9 dev-clean all shell name clean setup dev-deploy dev-build-deploy
 
 export MAKEFLAGS=--no-print-directory
 
 # Build everything: all platforms, create release ZIPs
-all: setup $(PLATFORMS) special package done
+all: setup $(PLATFORMS) special package
 
 # Enter Docker build environment for a specific platform
 shell:
@@ -143,21 +143,17 @@ build:
 # Copy platform binaries to build directory
 system:
 	make -f ./workspace/$(PLATFORM)/platform/makefile.copy PLATFORM=$(PLATFORM)
-	
+
 	# populate system
 	cp ./workspace/$(PLATFORM)/keymon/keymon.elf ./build/SYSTEM/$(PLATFORM)/bin/
 	cp ./workspace/$(PLATFORM)/libmsettings/libmsettings.so ./build/SYSTEM/$(PLATFORM)/lib
 	cp ./workspace/all/minui/build/$(PLATFORM)/minui.elf ./build/SYSTEM/$(PLATFORM)/bin/
 	cp ./workspace/all/minarch/build/$(PLATFORM)/minarch.elf ./build/SYSTEM/$(PLATFORM)/bin/
 	cp ./workspace/all/syncsettings/build/$(PLATFORM)/syncsettings.elf ./build/SYSTEM/$(PLATFORM)/bin/
-	# Copy utils (available to all paks)
-	cp ./workspace/all/utils/minui-keyboard/build/$(PLATFORM)/minui-keyboard ./build/SYSTEM/$(PLATFORM)/bin/
-	cp ./workspace/all/utils/minui-list/build/$(PLATFORM)/minui-list ./build/SYSTEM/$(PLATFORM)/bin/
-	cp ./workspace/all/utils/minui-presenter/build/$(PLATFORM)/minui-presenter ./build/SYSTEM/$(PLATFORM)/bin/
-	cp ./workspace/all/utils/jq/build/$(PLATFORM)/jq ./build/SYSTEM/$(PLATFORM)/bin/
+	# Install utils (calls install hook for each util)
+	@$(MAKE) -C ./workspace/all/utils install PLATFORM=$(PLATFORM) DESTDIR=$(CURDIR)/build/SYSTEM/$(PLATFORM)/bin
 	# Construct tool paks from workspace/all/paks/
-	# For each pak: create directory, copy launch.sh, pak.json, resources, and binary
-	for pak_dir in ./workspace/all/paks/*/; do \
+	@for pak_dir in ./workspace/all/paks/*/; do \
 		[ -d "$$pak_dir" ] || continue; \
 		pak_name=$$(basename "$$pak_dir"); \
 		[ -f "$$pak_dir/pak.json" ] || continue; \
@@ -167,9 +163,30 @@ system:
 			mkdir -p "$$output_dir"; \
 			[ -f "$$pak_dir/launch.sh" ] && cp "$$pak_dir/launch.sh" "$$output_dir/" && chmod +x "$$output_dir/launch.sh"; \
 			[ -f "$$pak_dir/pak.json" ] && cp "$$pak_dir/pak.json" "$$output_dir/"; \
-			[ -d "$$pak_dir/res" ] && cp -r "$$pak_dir/res" "$$output_dir/"; \
-			[ -d "$$pak_dir/bin" ] && cp -r "$$pak_dir/bin" "$$output_dir/"; \
-			[ -d "$$pak_dir/lib" ] && cp -r "$$pak_dir/lib" "$$output_dir/"; \
+			[ -f "$$pak_dir/settings.json" ] && cp "$$pak_dir/settings.json" "$$output_dir/"; \
+			if [ -d "$$pak_dir/res" ]; then \
+				mkdir -p "$$output_dir/res"; \
+				for res_file in "$$pak_dir/res"/*; do \
+					[ -f "$$res_file" ] && cp "$$res_file" "$$output_dir/res/"; \
+				done; \
+				if [ -d "$$pak_dir/res/$(PLATFORM)" ]; then \
+					cp -r "$$pak_dir/res/$(PLATFORM)" "$$output_dir/res/"; \
+				fi; \
+			fi; \
+			if [ -d "$$pak_dir/bin/$(PLATFORM)" ]; then \
+				mkdir -p "$$output_dir/bin"; \
+				cp -r "$$pak_dir/bin/$(PLATFORM)" "$$output_dir/bin/"; \
+			fi; \
+			for script in "$$pak_dir/bin"/*; do \
+				if [ -f "$$script" ] && [ -x "$$script" ]; then \
+					mkdir -p "$$output_dir/bin"; \
+					cp "$$script" "$$output_dir/bin/"; \
+				fi; \
+			done; \
+			if [ -d "$$pak_dir/lib/$(PLATFORM)" ]; then \
+				mkdir -p "$$output_dir/lib"; \
+				cp -r "$$pak_dir/lib/$(PLATFORM)" "$$output_dir/lib/"; \
+			fi; \
 			if [ -d "$$pak_dir/$(PLATFORM)" ]; then \
 				set +e; \
 				cp -r "$$pak_dir/$(PLATFORM)/"* "$$output_dir/" 2>/dev/null; \
@@ -191,38 +208,6 @@ system:
 		mkdir -p ./build/Tools/my282/Remove\ Loading.pak; \
 		cp -r ./workspace/my282/other/squashfs/output/* ./build/Tools/my282/Remove\ Loading.pak/; \
 	fi
-
-# Deploy shared libretro cores from minarch-cores GitHub releases
-# Downloads and extracts cores for both ARM architectures
-# Override: Place zips in workspace/all/paks/Emus/cores-override/ to skip download
-cores-download:
-	@mkdir -p build/.system/cores/a7 build/.system/cores/a53
-	@if [ -f workspace/all/paks/Emus/cores-override/linux-cortex-a7.zip ]; then \
-		echo "Using local a7 cores from workspace/all/paks/Emus/cores-override/..."; \
-		unzip -o -j -q workspace/all/paks/Emus/cores-override/linux-cortex-a7.zip -d build/.system/cores/a7; \
-	else \
-		echo "Downloading a7 cores (ARM32 - all 32-bit platforms) from minarch-cores $(MINARCH_CORES_VERSION)..."; \
-		curl -sL $(CORES_BASE)/linux-cortex-a7.zip -o /tmp/lessui-cores-a7.zip; \
-		unzip -o -j -q /tmp/lessui-cores-a7.zip -d build/.system/cores/a7; \
-		rm /tmp/lessui-cores-a7.zip; \
-	fi
-	@if [ -f workspace/all/paks/Emus/cores-override/linux-cortex-a53.zip ]; then \
-		echo "Using local a53 cores from workspace/all/paks/Emus/cores-override/..."; \
-		unzip -o -j -q workspace/all/paks/Emus/cores-override/linux-cortex-a53.zip -d build/.system/cores/a53; \
-	else \
-		echo "Downloading a53 cores (ARM64 - all 64-bit platforms) from minarch-cores $(MINARCH_CORES_VERSION)..."; \
-		curl -sL $(CORES_BASE)/linux-cortex-a53.zip -o /tmp/lessui-cores-a53.zip; \
-		unzip -o -j -q /tmp/lessui-cores-a53.zip -d build/.system/cores/a53; \
-		rm /tmp/lessui-cores-a53.zip; \
-	fi
-	@echo "Cores deployed successfully:"
-	@echo "  a7:  $$(ls build/.system/cores/a7/*.so 2>/dev/null | wc -l | tr -d ' ') cores (ARM32)"
-	@echo "  a53: $$(ls build/.system/cores/a53/*.so 2>/dev/null | wc -l | tr -d ' ') cores (ARM64)"
-
-# Legacy cores target - now just points to shared cores
-cores:
-	@echo "Cores are now shared in build/.system/cores/{a7,a53}"
-	@echo "No per-platform core deployment needed."
 
 # Build everything for a platform: binaries, system files
 common: build system
@@ -288,16 +273,14 @@ setup: name
 	cp ./skeleton/SYSTEM/res/installing@1x-wide.bmp ./workspace/m17/boot/
 	cp ./skeleton/SYSTEM/res/updating@1x-wide.bmp ./workspace/m17/boot/
 
-	# Deploy shared cores
-	@make cores-download
+	# Setup hooks - download shared binaries (runs once for all components)
+	@echo "Running setup hooks..."
+	@$(MAKE) -C ./workspace/all/utils setup DESTDIR=$(CURDIR)/build/SYSTEM/common/bin
+	@$(MAKE) -C ./workspace/all/paks setup DESTDIR=$(CURDIR)/build/SYSTEM/common/bin
 
 	# Generate platform-specific paks from templates
 	@echo "Generating paks from templates..."
 	@./scripts/generate-paks.sh all
-
-# Signal build completion (macOS only - harmless on Linux)
-done:
-	say "done" 2>/dev/null || true
 
 # Platform-specific packaging for Miyoo/Trimui family
 special:
@@ -352,14 +335,22 @@ package: tidy
 	cp -R ./build/BOOT/.tmp_update ./build/PAYLOAD/
 
 	# Create LessUI.zip for update installer
-	cd ./build/PAYLOAD && zip -r LessUI.zip .system .tmp_update
+	@if command -v 7z >/dev/null 2>&1; then \
+		cd ./build/PAYLOAD && 7z a -tzip -mmt=on -mx=5 LessUI.zip .system .tmp_update; \
+	else \
+		cd ./build/PAYLOAD && zip -r LessUI.zip .system .tmp_update; \
+	fi
 	mv ./build/PAYLOAD/LessUI.zip ./build/BASE
 
 	# Move Tools to BASE so everything is at the same level
 	mv ./build/Tools ./build/BASE/
 
-	# Package final release
-	cd ./build/BASE && zip -r ../../releases/$(RELEASE_NAME).zip Tools Bios Roms Saves miyoo miyoo354 trimui rg35xx rg35xxplus miyoo355 magicx miyoo285 em_ui.sh LessUI.zip README.txt
+	# Package final release (use 7z for multi-threaded compression if available)
+	@if command -v 7z >/dev/null 2>&1; then \
+		cd ./build/BASE && 7z a -tzip -mmt=on -mx=5 ../../releases/$(RELEASE_NAME).zip Tools Bios Roms Saves miyoo miyoo354 trimui rg35xx rg35xxplus miyoo355 magicx miyoo285 em_ui.sh LessUI.zip README.txt; \
+	else \
+		cd ./build/BASE && zip -r ../../releases/$(RELEASE_NAME).zip Tools Bios Roms Saves miyoo miyoo354 trimui rg35xx rg35xxplus miyoo355 magicx miyoo285 em_ui.sh LessUI.zip README.txt; \
+	fi
 	echo "$(RELEASE_NAME)" > ./build/latest.txt
 	
 ###########################################################

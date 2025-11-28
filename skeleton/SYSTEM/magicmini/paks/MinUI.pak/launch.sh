@@ -3,6 +3,7 @@
 # dmesg > /storage/TF1/dmesg.txt
 
 export PLATFORM="magicmini"
+export PLATFORM_ARCH="arm64"
 export SDCARD_PATH="/storage/TF2"
 export BIOS_PATH="$SDCARD_PATH/Bios"
 export SAVES_PATH="$SDCARD_PATH/Saves"
@@ -13,7 +14,7 @@ export SHARED_USERDATA_PATH="$SDCARD_PATH/.userdata/shared"
 export LOGS_PATH="$USERDATA_PATH/logs"
 export DATETIME_PATH="$SHARED_USERDATA_PATH/datetime.txt"
 
-export PATH=$SYSTEM_PATH/bin:$PATH
+export PATH=$SYSTEM_PATH/bin:$SDCARD_PATH/.system/common/bin/$PLATFORM_ARCH:$PATH
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:$LD_LIBRARY_PATH
 
 export SDL_AUDIODRIVER=alsa

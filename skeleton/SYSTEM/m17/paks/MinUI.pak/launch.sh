@@ -4,6 +4,7 @@
 #######################################
 
 export PLATFORM="m17"
+export PLATFORM_ARCH="arm"
 export SDCARD_PATH="/sdcard"
 export BIOS_PATH="$SDCARD_PATH/Bios"
 export SAVES_PATH="$SDCARD_PATH/Saves"
@@ -32,7 +33,7 @@ echo performance > /sys/devices/platform/10091000.gpu/devfreq/10091000.gpu/gover
 #######################################
 
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:/usr/lib:$LD_LIBRARY_PATH
-export PATH=$SYSTEM_PATH/bin:/usr/bin:$PATH
+export PATH=$SYSTEM_PATH/bin:$SDCARD_PATH/.system/common/bin/$PLATFORM_ARCH:/usr/bin:$PATH
 
 start_adbd.sh
 keymon.elf &

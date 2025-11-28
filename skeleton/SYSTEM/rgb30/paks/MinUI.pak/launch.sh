@@ -1,6 +1,7 @@
 #!/bin/sh
 
 export PLATFORM="rgb30"
+export PLATFORM_ARCH="arm64"
 export SDCARD_PATH="/storage/roms"
 export BIOS_PATH="$SDCARD_PATH/Bios"
 export SAVES_PATH="$SDCARD_PATH/Saves"
@@ -16,7 +17,7 @@ export DATETIME_PATH="$SHARED_USERDATA_PATH/datetime.txt"
 # JELOS aggressively repairs disks and leaves litter on the SD card
 rm $SDCARD_PATH/FSCK*.REC
 
-export PATH=$SYSTEM_PATH/bin:$PATH
+export PATH=$SYSTEM_PATH/bin:$SDCARD_PATH/.system/common/bin/$PLATFORM_ARCH:$PATH
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:$LD_LIBRARY_PATH
 
 # required for sdl12-compat

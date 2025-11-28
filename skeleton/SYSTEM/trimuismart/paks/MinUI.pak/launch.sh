@@ -14,6 +14,7 @@ fi
 #######################################
 
 export PLATFORM="trimuismart"
+export PLATFORM_ARCH="arm"
 export SDCARD_PATH="/mnt/SDCARD"
 export BIOS_PATH="$SDCARD_PATH/Bios"
 export SAVES_PATH="$SDCARD_PATH/Saves"
@@ -46,7 +47,7 @@ echo $CPU_SPEED_PERF > $CPU_PATH
 #######################################
 
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:/usr/trimui/lib:$LD_LIBRARY_PATH
-export PATH=$SYSTEM_PATH/bin:/usr/trimui/bin:$PATH
+export PATH=$SYSTEM_PATH/bin:$SDCARD_PATH/.system/common/bin/$PLATFORM_ARCH:/usr/trimui/bin:$PATH
 
 leds_off
 

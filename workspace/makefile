@@ -1,6 +1,4 @@
-# workspace (all)
-
-###########################################################
+# workspace/makefile - builds all components for a platform
 
 ifeq (,$(PLATFORM))
 PLATFORM=$(UNION_PLATFORM)
@@ -12,21 +10,34 @@ endif
 
 ###########################################################
 
-.PHONY: all
+# Components that can run in parallel after libs
+COMPONENTS = keymon minui minarch paks utils syncsettings platform-late
 
-all:
-	cd ./$(PLATFORM)/libmsettings && make
-	cd ./$(PLATFORM) && make early # eg. other libs
-	cd ./$(PLATFORM)/keymon && make
-	cd ./all/minui/ && make
-	cd ./all/minarch/ && make
-	cd ./all/paks/ && make
-	cd ./all/utils/minui-keyboard/ && make
-	cd ./all/utils/minui-list/ && make
-	cd ./all/utils/minui-presenter/ && make
-	cd ./all/utils/jq/ && make
-	cd ./all/syncsettings/ && make
-	cd ./$(PLATFORM) && make
+.PHONY: all libs $(COMPONENTS)
+
+all: libs $(COMPONENTS)
+
+# libs must complete first (libmsettings + early platform deps)
+libs:
+	$(MAKE) -C ./$(PLATFORM)/libmsettings
+	$(MAKE) -C ./$(PLATFORM) early
+
+$(COMPONENTS): libs
+
+keymon:
+	$(MAKE) -C ./$(PLATFORM)/keymon
+minui:
+	$(MAKE) -C ./all/minui/
+minarch:
+	$(MAKE) -C ./all/minarch/
+paks:
+	$(MAKE) -C ./all/paks/
+utils:
+	$(MAKE) -C ./all/utils/
+syncsettings:
+	$(MAKE) -C ./all/syncsettings/
+platform-late:
+	$(MAKE) -C ./$(PLATFORM)
 
 clean:
 	cd ./$(PLATFORM)/libmsettings && make clean
@@ -34,9 +45,6 @@ clean:
 	cd ./all/minui/ && make clean
 	cd ./all/minarch/ && make clean
 	cd ./all/paks/ && make clean
-	cd ./all/utils/minui-keyboard/ && make clean
-	cd ./all/utils/minui-list/ && make clean
-	cd ./all/utils/minui-presenter/ && make clean
-	cd ./all/utils/jq/ && make clean
+	cd ./all/utils/ && make clean
 	cd ./all/syncsettings/ && make clean
 	cd ./$(PLATFORM) && make clean

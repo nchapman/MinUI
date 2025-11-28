@@ -4,6 +4,7 @@
 #######################################
 
 export PLATFORM="zero28"
+export PLATFORM_ARCH="arm64"
 export SDCARD_PATH="/mnt/SDCARD"
 export BIOS_PATH="$SDCARD_PATH/Bios"
 export ROMS_PATH="$SDCARD_PATH/Roms"
@@ -31,7 +32,7 @@ fi
 #######################################
 
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:$LD_LIBRARY_PATH
-export PATH=$SYSTEM_PATH/bin:$PATH
+export PATH=$SYSTEM_PATH/bin:$SDCARD_PATH/.system/common/bin/$PLATFORM_ARCH:$PATH
 
 # corrects brightness control
 bl_disable && bl_enable

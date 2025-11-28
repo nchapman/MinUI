@@ -32,6 +32,7 @@ else
 fi
 export IS_PLUS
 export PLATFORM="miyoomini"
+export PLATFORM_ARCH="arm"
 export SDCARD_PATH="/mnt/SDCARD"
 export BIOS_PATH="$SDCARD_PATH/Bios"
 export SAVES_PATH="$SDCARD_PATH/Saves"
@@ -74,7 +75,7 @@ rm -f "$SDCARD_PATH/update.log"
 #######################################
 
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:$LD_LIBRARY_PATH
-export PATH=$SYSTEM_PATH/bin:$PATH
+export PATH=$SYSTEM_PATH/bin:$SDCARD_PATH/.system/common/bin/$PLATFORM_ARCH:$PATH
 
 #######################################
 

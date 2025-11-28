@@ -1,6 +1,7 @@
 #!/bin/sh
 
 export PLATFORM="my355"
+export PLATFORM_ARCH="arm64"
 export SDCARD_PATH="/mnt/SDCARD"
 export BIOS_PATH="$SDCARD_PATH/Bios"
 export SAVES_PATH="$SDCARD_PATH/Saves"
@@ -13,7 +14,7 @@ export DATETIME_PATH="$SHARED_USERDATA_PATH/datetime.txt"
 
 #######################################
 
-export PATH=$SYSTEM_PATH/bin:/usr/miyoo/bin:/usr/miyoo/sbin:$PATH
+export PATH=$SYSTEM_PATH/bin:$SDCARD_PATH/.system/common/bin/$PLATFORM_ARCH:/usr/miyoo/bin:/usr/miyoo/sbin:$PATH
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:/usr/miyoo/lib:$LD_LIBRARY_PATH
 
 #######################################

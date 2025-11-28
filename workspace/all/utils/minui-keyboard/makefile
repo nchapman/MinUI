@@ -1,45 +1,12 @@
-###########################################################
-
-ifeq (,$(PLATFORM))
-PLATFORM=$(UNION_PLATFORM)
-endif
-
-ifeq (,$(PLATFORM))
-	$(error please specify PLATFORM, eg. PLATFORM=miyoomini make)
-endif
-
-ifeq (,$(CROSS_COMPILE))
-	$(error missing CROSS_COMPILE for this toolchain)
-endif
-
-###########################################################
-
-include ../../../$(PLATFORM)/platform/makefile.env
-SDL?=SDL
-
-###########################################################
+# minui-keyboard - On-screen keyboard utility
+#
+# Uses shared build patterns from common/build.mk
 
 TARGET = minui-keyboard
-INCDIR = -I. -I../../common/ -I../../../$(PLATFORM)/platform/
-SOURCE = $(TARGET).c ../../common/utils.c ../../common/api.c ../../common/log.c ../../common/collections.c ../../common/pad.c ../../common/gfx_text.c ../../common/scaler.c ../../../$(PLATFORM)/platform/platform.c
-HEADERS = $(wildcard ../../common/*.h) $(wildcard ../../../$(PLATFORM)/platform/*.h)
 
-CC = $(CROSS_COMPILE)gcc
-CFLAGS   = $(ARCH) -fomit-frame-pointer
-CFLAGS  += $(INCDIR) -DPLATFORM=\"$(PLATFORM)\" -DUSE_$(SDL) $(LOG_FLAGS) -Ofast -std=gnu99
-LDFLAGS	 = -ldl $(LIBS) -l$(SDL) -l$(SDL)_image -l$(SDL)_ttf -lpthread -lm -lz
-LDFLAGS +=  -lmsettings
+# Utils are at workspace/all/utils/foo/ - 3 levels to workspace/
+PLATFORM_DEPTH = ../../../
 
-PRODUCT= build/$(PLATFORM)/$(TARGET)
+EXTRA_CFLAGS = -std=gnu99
 
-$(PRODUCT): $(SOURCE) $(HEADERS) | $(PREFIX)/include/msettings.h
-	mkdir -p build/$(PLATFORM)
-	$(CC) $(SOURCE) -o $(PRODUCT) $(CFLAGS) $(LDFLAGS)
-
-all: $(PRODUCT)
-
-clean:
-	rm -rf build
-
-$(PREFIX)/include/msettings.h:
-	cd /root/workspace/$(PLATFORM)/libmsettings && make
+include ../../common/build.mk

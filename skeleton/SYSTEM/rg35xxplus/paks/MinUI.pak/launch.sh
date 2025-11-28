@@ -1,6 +1,7 @@
 #!/bin/sh
 
 export PLATFORM="rg35xxplus"
+export PLATFORM_ARCH="arm"
 export SDCARD_PATH="/mnt/sdcard"
 export BIOS_PATH="$SDCARD_PATH/Bios"
 export SAVES_PATH="$SDCARD_PATH/Saves"
@@ -14,7 +15,7 @@ export HDMI_EXPORT_PATH="/tmp/hdmi_export.sh"
 
 #######################################
 
-export PATH=$SYSTEM_PATH/bin:$PATH
+export PATH=$SYSTEM_PATH/bin:$SDCARD_PATH/.system/common/bin/$PLATFORM_ARCH:$PATH
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:$LD_LIBRARY_PATH
 
 #######################################
