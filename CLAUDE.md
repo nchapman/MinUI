@@ -386,7 +386,8 @@ See `.clang-format` for complete style definition.
 ## Documentation
 
 - `README.md` - Project overview, supported devices
-- `docs/cross-platform-paks.md` - Tool pak architecture and migration guide
+- `docs/paks-architecture.md` - Tool pak architecture guide
+- `docs/creating-paks.md` - Third-party pak creation guide
 - `tests/README.md` - Comprehensive testing guide
 - `docs/testing-checklist.md` - Testing roadmap and priorities
 

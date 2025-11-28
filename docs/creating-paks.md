@@ -10,7 +10,7 @@ Some platforms have multiple devices with unique qualities. LessUI differentiate
 
 # The types of emulator pak
 
-There are three basic types of emulator paks, which you chose depends on your goals and your desired level of LessUI integration. See [CORES.md](CORES.md) for details on how libretro cores work in LessUI.
+There are three basic types of emulator paks, which you chose depends on your goals and your desired level of LessUI integration. See [cores.md](cores.md) for details on how libretro cores work in LessUI.
 
 The first type reuses a libretro core included with a base LessUI install. This takes advantage of a known working core but allows customizing the default options and separating user configs. An example of this type is the extra GG.pak which uses the default picodrive core.
 
@@ -122,7 +122,7 @@ LessUI currently only supports the RGB565 pixel format and does not implement th
 
 ## Resources
 
-- [Architecture Guide](ARCHITECTURE.md) - How LessUI works internally
-- [Cores Guide](CORES.md) - How libretro cores work
-- [Development Guide](DEVELOPMENT.md) - Building and testing
+- [Architecture Guide](architecture.md) - How LessUI works internally
+- [Cores Guide](cores.md) - How libretro cores work
+- [Development Guide](development.md) - Building and testing
 - [Main Project Docs](../CLAUDE.md) - Comprehensive reference

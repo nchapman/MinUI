@@ -19,7 +19,7 @@ Platform-independent C code that works everywhere:
   - Display hardware status (battery, volume, brightness)
 
 - **minarch** (`minarch.c`) - The libretro frontend
-  - Load and run emulator cores (see [CORES.md](CORES.md) for details)
+  - Load and run emulator cores (see [cores.md](cores.md) for details)
   - Save state management (auto-save to slot 9)
   - In-game menu (states, disc changing, options)
   - Video scaling and audio mixing
@@ -175,7 +175,7 @@ Tools/miyoomini/
 
 Tools appear in the launcher as a separate category.
 
-See [PAKS.md](PAKS.md) for complete pak development guide.
+See [creating-paks.md](creating-paks.md) for complete pak development guide.
 
 ## Multi-Resolution Support
 
@@ -401,8 +401,8 @@ Common code uses these macros. Never hardcode paths.
 
 ## Resources
 
-- [Development Guide](DEVELOPMENT.md) - Building and testing
-- [Cores Guide](CORES.md) - How libretro cores work
-- [Pak Development](PAKS.md) - Creating custom paks
+- [Development Guide](development.md) - Building and testing
+- [Cores Guide](cores.md) - How libretro cores work
+- [Pak Development](creating-paks.md) - Creating custom paks
 - [Platform READMEs](../workspace/) - Hardware-specific details
 - [Project Docs](../CLAUDE.md) - Comprehensive technical reference

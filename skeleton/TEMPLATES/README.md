@@ -61,4 +61,4 @@ make setup  # Generates all paks for all platforms
 - **Generated** (during build): `build/SYSTEM/*/paks/Emus/`
 - **Never committed**: Generated paks (see `.gitignore`)
 
-See `docs/PAK-TEMPLATES.md` for comprehensive documentation.
+See `docs/paks-architecture.md` for comprehensive documentation.

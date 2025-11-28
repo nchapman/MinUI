@@ -263,8 +263,8 @@ Cores are built externally in the [minarch-cores repository](https://github.com/
 4. Run `./scripts/generate-paks.sh all` to generate platform paks
 5. Test on target hardware
 
-See [CORES.md](CORES.md) for details on how cores are distributed and loaded.
-See [PAK-TEMPLATES.md](PAK-TEMPLATES.md) for pak generation system documentation.
+See [cores.md](cores.md) for details on how cores are distributed and loaded.
+See [paks-architecture.md](paks-architecture.md) for pak generation system documentation.
 
 ### Fixing a Bug
 
@@ -333,9 +333,9 @@ Then check logs on device.
 
 ## Resources
 
-- [Architecture Guide](ARCHITECTURE.md) - How LessUI works internally
-- [Cores Guide](CORES.md) - How libretro cores work
-- [Pak Development](PAKS.md) - Creating custom emulator paks
+- [Architecture Guide](architecture.md) - How LessUI works internally
+- [Cores Guide](cores.md) - How libretro cores work
+- [Pak Development](creating-paks.md) - Creating custom emulator paks
 - [Platform READMEs](../workspace/) - Platform-specific docs
 - [Main Project Docs](../CLAUDE.md) - Comprehensive reference
 

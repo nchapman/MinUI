@@ -281,7 +281,7 @@ GB.pak/
 └── default.cfg     # Default core options and input mappings
 ```
 
-These directories are generated from templates in `skeleton/TEMPLATES/minarch-paks/` during the build process. See `docs/PAK-TEMPLATES.md` for details.
+These directories are generated from templates in `workspace/all/paks/Emus/` during the build process. See `docs/paks-architecture.md` for details.
 
 ### Launch Script
 
@@ -620,12 +620,12 @@ Since cores are built externally, adding a core to LessUI involves:
 4. **Generate paks** - Run `./scripts/generate-paks.sh all` to create platform paks
 5. **Test** - Verify core loads, save states work, and in-game menu functions correctly
 
-See `docs/PAK-TEMPLATES.md` for comprehensive pak generation documentation.
+See `docs/paks-architecture.md` for comprehensive pak generation documentation.
 
 ## Resources
 
-- [Architecture Guide](ARCHITECTURE.md) - How LessUI works internally
-- [Development Guide](DEVELOPMENT.md) - Building and testing
-- [Pak Templates](PAK-TEMPLATES.md) - Pak generation system
+- [Architecture Guide](architecture.md) - How LessUI works internally
+- [Development Guide](development.md) - Building and testing
+- [Pak Architecture](paks-architecture.md) - Pak generation system
 - [minarch-cores Repository](https://github.com/nchapman/minarch-cores) - Core build system
 - [CLAUDE.md](../CLAUDE.md) - Comprehensive technical reference

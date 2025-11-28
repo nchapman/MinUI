@@ -233,6 +233,6 @@ Within each level, later entries override earlier entries. The most specific con
 
 ## See Also
 
-- `docs/PAK-TEMPLATES.md` - Complete pak template system documentation
+- `docs/paks-architecture.md` - Complete pak template system documentation
 - `cores.json` - Core definitions and metadata
 - `platforms.json` - Platform metadata and architecture info

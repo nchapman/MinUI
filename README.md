@@ -6,7 +6,7 @@ LessUI is a focused, custom launcher and libretro frontend for [a variety of ret
 
 <img src="docs/images/screenshots/minui-main.png" width=320 /> <img src="docs/images/screenshots/minui-menu-gbc.png" width=320 />
 
-*See [all screenshots](docs/SCREENSHOTS.md)*
+*See [all screenshots](docs/screenshots.md)*
 
 ## Features
 
@@ -108,8 +108,8 @@ For detailed installation steps and device-specific setup, see the `README.txt` 
 
 Want to build LessUI, create custom paks, or understand how it works?
 
-- **[Development Guide](docs/DEVELOPMENT.md)** - Building, testing, and contributing
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - How LessUI works internally
-- **[Cores Guide](docs/CORES.md)** - How libretro cores are built and loaded
-- **[Pak Development Guide](docs/PAKS.md)** - Creating custom emulator and tool paks
+- **[Development Guide](docs/development.md)** - Building, testing, and contributing
+- **[Architecture Guide](docs/architecture.md)** - How LessUI works internally
+- **[Cores Guide](docs/cores.md)** - How libretro cores are built and loaded
+- **[Pak Development Guide](docs/creating-paks.md)** - Creating custom emulator and tool paks
 - **[Platform Documentation](workspace/)** - Technical hardware details for each device
