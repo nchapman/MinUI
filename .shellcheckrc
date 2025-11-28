@@ -5,8 +5,9 @@
 # SC1090: Can't follow non-constant source (dynamic includes, unavoidable)
 # SC2046: Quote $(commands) - massive refactor, separate PR
 # SC2164: cd || exit - massive refactor, separate PR
+# SC2207: Prefer mapfile/read -a - intentional use for array from command output
 # SC3010,SC3014: POSIX compatibility (not a concern for embedded Linux)
-disable=SC1090,SC2046,SC2164,SC3010,SC3014
+disable=SC1090,SC2046,SC2164,SC2207,SC3010,SC3014
 
 # Show errors and warnings (skip info/style noise)
 severity=warning

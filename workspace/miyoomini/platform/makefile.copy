@@ -16,7 +16,3 @@ $(PLATFORM):
 	# boot assets
 	cp ./skeleton/SYSTEM/res/installing@2x.png ./build/BOOT/common/$@/installing.png
 	cp ./skeleton/SYSTEM/res/updating@2x.png ./build/BOOT/common/$@/updating.png
-	# extras
-	cp ./workspace/$@/other/DinguxCommander/output/DinguxCommander ./build/EXTRAS/Tools/$@/Files.pak/
-	cp -r ./workspace/$@/other/DinguxCommander/res ./build/EXTRAS/Tools/$@/Files.pak/
-	cp -r ./workspace/$@/other/logotweak/output/*.elf ./build/EXTRAS/Tools/$@/Bootlogo.pak/

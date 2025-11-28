@@ -5,7 +5,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIGS_DIR="$SCRIPT_DIR/../skeleton/TEMPLATES/minarch-paks/configs"
+CONFIGS_DIR="$SCRIPT_DIR/../workspace/all/paks/Emus/configs"
 
 cd "$CONFIGS_DIR"
 

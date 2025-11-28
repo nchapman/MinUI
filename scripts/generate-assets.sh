@@ -122,36 +122,36 @@ echo "Processing bootlogo variants for Bootlogo.pak tools..."
 # Resize to 60x60 to leave 20px padding on all sides
 $MAGICK $SRC/logo.png -filter Point -resize 60x60! -background black -gravity center \
     -extent 100x100 -flip -type TrueColor -define bmp:format=bmp3 \
-    skeleton/EXTRAS/Tools/m17/Bootlogo.pak/logo.bmp
+    workspace/all/paks/Bootlogo/m17/logo.bmp
 echo "  ✓ m17 logo.bmp (100×100, 24-bit, flipped, 20px padding)"
 
 # my282: 480×640 portrait, 32-bit, bottom-up, rotated 90° CCW (use full bootlogo)
 $MAGICK $SRC/bootlogo.png -filter Point -resize 640x480! -rotate -90 \
     -background black -gravity center -extent 480x640 \
-    -define bmp3:alpha=true BMP3:skeleton/EXTRAS/Tools/my282/Bootlogo.pak/bootlogo.bmp
+    -define bmp3:alpha=true BMP3:workspace/all/paks/Bootlogo/my282/bootlogo.bmp
 echo "  ✓ my282 bootlogo.bmp (480×640, 32-bit, 90° CCW)"
 
 # my355: 640×480, 24-bit, bottom-up (use full bootlogo)
 $MAGICK $SRC/bootlogo.png -filter Point -resize 640x480! -background black -gravity center \
     -type TrueColor -define bmp:format=bmp3 \
-    skeleton/EXTRAS/Tools/my355/Bootlogo.pak/payload/logo.bmp
+    workspace/all/paks/Bootlogo/my355/payload/logo.bmp
 echo "  ✓ my355 logo.bmp (640×480, 24-bit)"
 
 # tg5040: 128×128, 32-bit, bottom-up
 $MAGICK $SRC/logo.png -filter Point -resize 128x128! -background black -gravity center \
-    -extent 128x128 -define bmp3:alpha=true BMP3:skeleton/EXTRAS/Tools/tg5040/Bootlogo.pak/bootlogo.bmp
+    -extent 128x128 -define bmp3:alpha=true BMP3:workspace/all/paks/Bootlogo/tg5040/bootlogo.bmp
 echo "  ✓ tg5040 bootlogo.bmp (128×128, 32-bit)"
 
 # tg5040 brick: 216×237, 24-bit, bottom-up
 $MAGICK $SRC/logo.png -filter Point -resize 216x216! -background black -gravity center \
     -extent 216x237 -type TrueColor -define bmp:format=bmp3 \
-    skeleton/EXTRAS/Tools/tg5040/Bootlogo.pak/brick/bootlogo.bmp
+    workspace/all/paks/Bootlogo/tg5040/brick/bootlogo.bmp
 echo "  ✓ tg5040-brick bootlogo.bmp (216×237, 24-bit)"
 
 # zero28: 120×120, 24-bit, bottom-up, rotated 90° clockwise
 $MAGICK $SRC/logo.png -filter Point -resize 120x120! -rotate 90 -background black -gravity center \
     -extent 120x120 -type TrueColor -define bmp:format=bmp3 \
-    skeleton/EXTRAS/Tools/zero28/Bootlogo.pak/bootlogo.bmp
+    workspace/all/paks/Bootlogo/zero28/bootlogo.bmp
 echo "  ✓ zero28 bootlogo.bmp (120×120, 24-bit, 90° rotated)"
 
 echo ""
@@ -161,9 +161,9 @@ echo "Generated variants:"
 ls -lh $OUT/*@*.png $OUT/*@*.bmp | awk '{print "  " $9 " (" $5 ")"}'
 echo ""
 echo "Platform-specific bootlogos:"
-find skeleton/EXTRAS/Tools/*/Bootlogo.pak -name "*.bmp" ! -name "original*" -exec ls -lh {} \; | awk '{print "  " $9 " (" $5 ")"}'
+find workspace/all/paks/Bootlogo -name "*.bmp" ! -name "original*" -exec ls -lh {} \; | awk '{print "  " $9 " (" $5 ")"}'
 echo ""
 echo "Next steps:"
 echo "1. Review the generated files"
-echo "2. Commit to repository: git add skeleton/SYSTEM/res/ skeleton/SYSTEM/res-src/ skeleton/EXTRAS/Tools/"
+echo "2. Commit to repository: git add skeleton/SYSTEM/res/ skeleton/SYSTEM/res-src/ workspace/all/paks/Bootlogo/"
 echo "3. Normal builds will use these pre-generated variants (no ImageMagick needed)"

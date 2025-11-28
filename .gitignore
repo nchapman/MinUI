@@ -19,11 +19,10 @@ build/.system/cores/
 **/boot/output
 **/squashfs/output
 
-# Generated paks (from skeleton/TEMPLATES/)
-# Note: Old duplicated paks removed from skeleton/SYSTEM/*/paks/Emus/ and skeleton/EXTRAS/Emus/
+# Generated paks (from workspace/all/paks/)
 # Paks are now generated during build from templates - see docs/PAK-TEMPLATES.md
 build/SYSTEM/*/paks/Emus/*.pak
-build/EXTRAS/Emus/*/*.pak
+build/Tools/*/*.pak
 
 **/other/evtest
 **/other/jstest

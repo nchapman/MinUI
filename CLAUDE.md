@@ -106,44 +106,52 @@ make PLATFORM=miyoomini build
 
 Active platforms (as of most recent): miyoomini, trimuismart, rg35xx, rg35xxplus, my355, tg5040, zero28, rgb30, m17, my282, magicmini
 
-### Pak Template System
+### Pak Systems
 
-LessUI uses **two systems** for generating platform-specific `.pak` directories:
+LessUI uses **three systems** for platform-specific `.pak` directories:
 
-**1. MinArch Paks** (`skeleton/TEMPLATES/minarch-paks/`) - Template-based for libretro cores:
+**1. Tool Paks** (`workspace/all/paks/`) - Self-contained cross-platform tools:
+- Each pak has its own directory with `pak.json`, `launch.sh`, and optional `src/`
+- Native code in `src/` is cross-compiled per platform
+- Constructed during `make system` (not `make setup`)
+- **Completed migrations**: `Clock/`, `Input/`, `Bootlogo/`, `Files/`
+- Platform-specific resources supported via `<platform>/` directories
+- Hybrid pattern supported (native for some platforms, shell-only for others)
+
+**2. Emulator Paks** (`workspace/all/paks/Emus/`) - Template-based for libretro cores:
 - `platforms.json` - Platform metadata (nice prefix, default settings)
 - `cores.json` - Core definitions (43 cores, all included in base install)
 - `launch.sh.template` - Shared launch script template
 - `configs/` - Config templates for all supported cores
+- `cores-override/` - Local core zips for development
 
-**2. Direct Paks** (`skeleton/TEMPLATES/paks/`) - Copied as-is for special cases:
+**3. Direct Paks** (`skeleton/TEMPLATES/paks/`) - Copied as-is for special cases:
 - PAK.pak - Native application launcher (copied to all platforms)
 
 **Generation:**
 ```bash
-# Automatic during build
-make setup  # Generates all paks
+# Emulator paks generated during setup
+make setup  # Generates minarch paks and direct paks
 
-# Manual generation
-./scripts/generate-paks.sh all              # All platforms
-./scripts/generate-paks.sh miyoomini        # Specific platform
-./scripts/generate-paks.sh miyoomini GB GBA # Specific cores
+# Tool paks constructed during system phase
+make build PLATFORM=miyoomini   # Compiles tool pak binaries
+make system PLATFORM=miyoomini  # Constructs complete tool paks
 ```
+
+**Adding a new tool pak:**
+1. Create directory `workspace/all/paks/<Name>/`
+2. Create `pak.json` with name, platforms, build type
+3. Create `launch.sh` (cross-platform entry point)
+4. For native code: create `src/` with source and makefile
+5. Test: `make build PLATFORM=miyoomini && make system PLATFORM=miyoomini`
 
 **Adding a new emulator core:**
 1. Build core in external [minarch-cores repository](https://github.com/nchapman/minarch-cores)
-2. Add to `skeleton/TEMPLATES/minarch-paks/cores.json`
-3. Create `skeleton/TEMPLATES/minarch-paks/configs/<CORE>.cfg`
+2. Add to `workspace/all/paks/Emus/cores.json`
+3. Create `workspace/all/paks/Emus/configs/base/<CORE>/default.cfg`
 4. Run `./scripts/generate-paks.sh all`
 
-**Adding a special pak:**
-1. Create directory in `skeleton/TEMPLATES/paks/<NAME>.pak/`
-2. Add `launch.sh` and any other files
-3. Run `./scripts/generate-paks.sh all` (copied to all platforms)
-
-**Key benefit:** One template → 12 platforms (~500 paks, all included in base install)
-
-See `docs/PAK-TEMPLATES.md` for comprehensive documentation.
+See `docs/cross-platform-paks.md` for comprehensive tool pak documentation.
 
 ## Development Commands
 
@@ -368,6 +376,9 @@ See `.clang-format` for complete style definition.
 | Platform API | `workspace/all/common/api.c` |
 | Platform definitions | `workspace/<platform>/platform/platform.h` |
 | Common definitions | `workspace/all/common/defines.h` |
+| Tool paks | `workspace/all/paks/` |
+| Emulator pak templates | `workspace/all/paks/Emus/` |
+| Pak generation script | `scripts/generate-paks.sh` |
 | Test suite | `tests/unit/all/common/test_utils.c` |
 | Build orchestration | `Makefile` (host-side) |
 | QA tools | `makefile.qa` |
@@ -375,9 +386,10 @@ See `.clang-format` for complete style definition.
 ## Documentation
 
 - `README.md` - Project overview, supported devices
+- `docs/paks-architecture.md` - Tool pak architecture guide
+- `docs/creating-paks.md` - Third-party pak creation guide
 - `tests/README.md` - Comprehensive testing guide
 - `docs/testing-checklist.md` - Testing roadmap and priorities
-- `docs/parallel-builds-analysis.md` - Build system analysis
 
 ## Current Test Coverage
 
