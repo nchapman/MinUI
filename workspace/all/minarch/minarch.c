@@ -3353,7 +3353,7 @@ static int fit = 0; // Use hardware scaler
 #endif
 
 // Helper macro: true if pixel format requires conversion to RGB565
-#define NEEDS_CONVERSION (pixel_format != RETRO_PIXEL_FORMAT_RGB565)
+#define NEEDS_CONVERSION ((pixel_format) != RETRO_PIXEL_FORMAT_RGB565)
 
 // Buffer for pixel format conversion (0RGB1555/XRGB8888 -> RGB565)
 static void* convert_buffer = NULL;
@@ -3380,8 +3380,9 @@ static void convert_buffer_alloc(int w, int h) {
 	convert_buffer = malloc(buffer_size);
 	if (!convert_buffer) {
 		LOG_error("Failed to allocate conversion buffer: %dx%d (%zu bytes)", w, h, buffer_size);
-		LOG_error("Falling back to RGB565 (conversion disabled)");
-		pixel_format = RETRO_PIXEL_FORMAT_RGB565;
+		LOG_error("Conversion disabled due to allocation failure");
+		// NOTE: Do not change pixel_format here - core will continue outputting
+		// in the original format, so changing it would cause color corruption
 		return;
 	}
 	LOG_debug("Allocated conversion buffer: %dx%d (%zu bytes)", w, h, buffer_size);
@@ -3391,7 +3392,8 @@ static void convert_buffer_alloc(int w, int h) {
 // Pixel Format Conversion Functions
 //
 // Convert non-native formats to RGB565 for display. NEON-optimized versions
-// process 8 pixels at a time for ~3-4x speedup on ARM devices.
+// process multiple pixels at once (8 for 0RGB1555, 4 for XRGB8888) for ~3-4x
+// speedup on ARM devices.
 // ============================================================================
 
 #ifdef HAS_NEON
@@ -3462,7 +3464,7 @@ static void convert_xrgb8888_neon(const void* data, unsigned width, unsigned hei
  *
  * The key difference from RGB565 is that green is only 5 bits in 1555,
  * so we need to expand it to 6 bits. We duplicate the MSB of green
- * into the LSB position: G5 = (g << 1) | (g >> 4)
+ * into the LSB position: g6 = (g << 1) | (g >> 4)
  *
  * @param data Source 0RGB1555 data
  * @param width Frame width
