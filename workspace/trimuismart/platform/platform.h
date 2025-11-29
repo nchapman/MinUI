@@ -135,6 +135,7 @@
 ///////////////////////////////
 
 #define SCREEN_DIAGONAL 2.4f // Physical screen diagonal in inches
+#define SCALE_MODIFIER 0.85f // Reduce UI size to fit more content on small screen
 #define FIXED_WIDTH 320 // Screen width in pixels
 #define FIXED_HEIGHT 240 // Screen height in pixels (QVGA)
 
